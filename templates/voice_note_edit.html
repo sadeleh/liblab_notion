@@ -1,0 +1,1433 @@
+{% extends "base.html" %}
+
+{% block title %}{{ voice_note.title }} - فكرة{% endblock %}
+
+{% block head %}
+<style>
+    /* New recording styles */
+    .new-recording {
+        animation: newRecordingGlow 2s ease-in-out infinite alternate;
+        border: 2px solid #10b981 !important;
+        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%) !important;
+    }
+    
+    @keyframes newRecordingGlow {
+        from {
+            box-shadow: 0 0 5px rgba(16, 185, 129, 0.3);
+        }
+        to {
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+        }
+    }
+    
+    /* Smooth highlight effect */
+    .highlight-effect {
+        transition: box-shadow 0.3s ease-in-out;
+    }
+    
+    /* Enhanced transcript animations */
+    .transcript-content {
+        transition: all 0.3s ease-in-out;
+    }
+    
+    /* Recording card hover effects */
+    .recording-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    /* Fallback CSS for Markdown formatting */
+    .markdown-content {
+        /* This will be processed by JavaScript to convert **text** to bold */
+    }
+    
+    /* Print styles - print only the main canvas */
+    @media print {
+        body * { visibility: hidden; }
+        .main-canvas, .main-canvas * { visibility: visible; }
+        .main-canvas {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            direction: rtl;
+            font-family: 'Noto Kufi Arabic', 'Cairo', 'Tahoma', sans-serif;
+        }
+        @page { margin: 1cm; direction: rtl; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div dir="rtl" style="font-family: 'Noto Kufi Arabic', 'Cairo', 'Tahoma', sans-serif;" class="text-right min-h-screen bg-gradient-to-br from-cyan-50 to-blue-50">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <!-- Header -->
+        <div class="mb-6 sm:mb-8">
+            <div class="flex items-center mb-4">
+                <a href="{{ url_for('voice_notes') }}" 
+                   class="text-cyan-600 hover:text-cyan-800 ml-4 p-2 rounded-full hover:bg-cyan-100 transition-colors duration-200">
+                    <i class="fas fa-arrow-right text-lg sm:text-xl"></i>
+                </a>
+                <div class="flex-1">
+                    <h1 dir="rtl" class="text-xl sm:text-2xl lg:text-3xl font-bold text-cyan-950 mb-1">🎙️ {{ voice_note.title }}</h1>
+                    {% if voice_note.description %}
+                    <p dir="rtl" class="text-sm sm:text-base text-gray-600">{{ voice_note.description }}</p>
+                    {% endif %}
+                </div>
+                <!-- Generate Summary Button -->
+                <button id="generateSummaryBtn" 
+                        class="bg-green-500 hover:bg-green-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold transition-all duration-200 flex items-center ml-2">
+                    <i class="fas fa-magic ml-2"></i>
+                    <span class="hidden sm:inline">إنشاء تقرير شامل</span>
+                    <span class="sm:hidden">تقرير</span>
+                </button>
+                
+                <!-- Print Report Button -->
+                <button id="printReportBtn" 
+                        onclick="printCurrentReport()" 
+                        class="bg-cyan-600 hover:bg-cyan-700 text-white px-3 sm:px-4 py-2 sm:py-3 rounded-lg font-semibold transition-all duration-200 flex items-center">
+                    <i class="fas fa-print ml-2"></i>
+                    <span class="hidden sm:inline">طباعة التقرير الشامل</span>
+                    <span class="sm:hidden">طباعة</span>
+                </button>
+            </div>
+            
+            <!-- Note Meta -->
+            <div class="flex flex-wrap gap-4 text-xs sm:text-sm text-gray-500">
+                <div class="flex items-center">
+                    <i class="fas fa-user ml-2"></i>
+                    <span>{{ voice_note.created_by or 'مجهول' }}</span>
+                </div>
+                <div class="flex items-center">
+                    <i class="fas fa-clock ml-2"></i>
+                    <span>{{ voice_note.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                </div>
+                {% if voice_note.updated_at and voice_note.updated_at != voice_note.created_at %}
+                <div class="flex items-center">
+                    <i class="fas fa-edit ml-2"></i>
+                    <span>آخر تحديث: {{ voice_note.updated_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Main Layout: Side Panel + Canvas -->
+        <div class="flex flex-col lg:flex-row gap-6 sm:gap-8">
+            <!-- Side Panel: Recording Controls + Recordings/Comments List -->
+            <div class="w-full lg:w-1/3 space-y-6">
+                <!-- Recording Panel -->
+                <div class="bg-white rounded-2xl shadow-xl p-4 sm:p-6 border border-gray-100">
+                    <h3 dir="rtl" class="text-base sm:text-lg font-bold text-gray-900 mb-4 flex items-center">
+                        <i class="fas fa-microphone ml-2 text-cyan-600"></i>
+                        تسجيل صوتي جديد
+                    </h3>
+
+                    <!-- Recording Controls -->
+                    <div class="text-center mb-4">
+                        <div class="mb-3">
+                            <div id="recordingStatus" class="text-xs sm:text-sm text-gray-600 mb-1">اضغط لبدء التسجيل</div>
+                            <div id="recordingTime" class="text-lg sm:text-xl font-mono text-cyan-900 mb-3">00:00</div>
+                        </div>
+
+                        <!-- Recording Button -->
+                        <button id="recordButton" 
+                                class="w-12 h-12 sm:w-14 sm:h-14 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center mx-auto mb-3 transition-all duration-300 transform hover:scale-105">
+                            <i id="recordIcon" class="fas fa-microphone text-sm sm:text-base"></i>
+                        </button>
+
+                        <!-- Control Buttons -->
+                        <div class="flex justify-center gap-2">
+                            <button id="stopButton" 
+                                    disabled
+                                    class="bg-gray-300 text-gray-500 px-2 sm:px-3 py-1 sm:py-2 rounded text-xs font-semibold transition-all duration-200 disabled:opacity-50">
+                                <i class="fas fa-stop ml-1"></i>
+                                إيقاف
+                            </button>
+                            
+                            <button id="playButton" 
+                                    disabled
+                                    class="bg-blue-500 text-white px-2 sm:px-3 py-1 sm:py-2 rounded text-xs font-semibold hover:bg-blue-600 transition-all duration-200 disabled:opacity-50">
+                                <i class="fas fa-play ml-1"></i>
+                                تشغيل
+                            </button>
+                            
+                            <button id="saveButton" 
+                                    disabled
+                                    class="bg-green-500 text-white px-2 sm:px-3 py-1 sm:py-2 rounded text-xs font-semibold hover:bg-green-600 transition-all duration-200 disabled:opacity-50">
+                                <i class="fas fa-save ml-1"></i>
+                                حفظ
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Audio Visualization -->
+                    <div class="mb-3">
+                        <canvas id="visualizer" class="w-full h-12 bg-gray-100 rounded"></canvas>
+                    </div>
+
+                    <!-- Recording Preview -->
+                    <div id="recordingPreview" class="hidden">
+                        <h4 dir="rtl" class="text-sm font-semibold text-gray-800 mb-2">معاينة التسجيل:</h4>
+                        <audio id="previewAudio" controls class="w-full mb-3"></audio>
+                    </div>
+                </div>
+
+                <!-- Text Comment Panel -->
+                <div class="bg-white rounded-2xl shadow-xl p-4 sm:p-6 border border-gray-100">
+                    <h3 dir="rtl" class="text-base sm:text-lg font-bold text-gray-900 mb-4 flex items-center">
+                        <i class="fas fa-comment ml-2 text-blue-600"></i>
+                        إضافة تعليق نصي
+                    </h3>
+
+                    <form id="commentForm" class="space-y-3">
+                        <div>
+                            <textarea id="commentContent" 
+                                      name="content" 
+                                      rows="3"
+                                      dir="rtl"
+                                      class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 text-right resize-none text-sm"
+                                      placeholder="اكتب تعليق أو نص مرافق للفكرة..."></textarea>
+                        </div>
+                        
+                        <div>
+                            <input type="text" 
+                                   id="commentAuthor" 
+                                   name="author" 
+                                   dir="rtl"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 text-right text-sm"
+                                   placeholder="اسمك (اختياري)">
+                        </div>
+                        
+                        <button type="submit" 
+                                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded transition duration-300 text-sm">
+                            <i class="fas fa-comment-plus ml-2"></i>
+                            إضافة التعليق
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- Recordings & Comments List -->
+                <div class="bg-white rounded-2xl shadow-xl p-4 sm:p-6 border border-gray-100">
+                    <h3 dir="rtl" class="text-base sm:text-lg font-bold text-gray-900 mb-4 flex items-center">
+                        <i class="fas fa-list ml-2 text-purple-600"></i>
+                        التسجيلات والتعليقات
+                    </h3>
+
+                    <div id="recordingsList" class="space-y-4">
+                        <!-- Recordings -->
+                        {% for recording in recordings %}
+                        <div class="bg-cyan-50 border border-cyan-200 rounded-lg p-4" data-recording-id="{{ recording.id }}">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 dir="rtl" class="text-sm font-semibold text-cyan-900 flex items-center">
+                                    <i class="fas fa-microphone ml-2"></i>
+                                    تسجيل صوتي
+                                </h4>
+                                <span class="text-xs text-gray-500">{{ recording.created_at.strftime('%H:%M') }}</span>
+                            </div>
+                            
+                            <audio controls class="w-full mb-2" preload="metadata">
+                                <source src="{{ url_for('serve_voice_recording', filename=recording.filename) }}" type="{{ recording.content_type }}">
+                                متصفحك لا يدعم تشغيل الصوت
+                            </audio>
+                            
+                            <div class="text-xs text-gray-600 mb-2">
+                                {% if recording.file_size %}
+                                <span>الحجم: {{ "%.1f"|format(recording.file_size / 1024) }} KB</span>
+                                {% endif %}
+                                {% if recording.duration %}
+                                <span class="ml-2">المدة: {{ recording.duration }}s</span>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Transcript Section -->
+                            <div class="mt-3">
+                                {% if recording.transcription %}
+                                <!-- Transcript already exists -->
+                                <button data-action="toggle-transcript" data-recording-id="{{ recording.id }}" 
+                                        class="transcript-toggle-btn w-full text-xs bg-green-500 hover:bg-green-600 text-white py-1 px-2 rounded transition-colors duration-200 mb-2">
+                                    <i class="fas fa-file-text ml-1"></i>
+                                    عرض النص المكتوب
+                                </button>
+                                <div id="transcript-{{ recording.id }}" class="transcript-content hidden bg-white border border-green-200 rounded p-2 text-xs">
+                                    <div class="text-green-800 font-semibold mb-1">النص المكتوب:</div>
+                                    <div dir="auto" class="text-gray-700 leading-relaxed">{{ recording.transcription }}</div>
+                                </div>
+                                {% else %}
+                                <!-- No transcript yet -->
+                                <button data-action="generate-transcript" data-recording-id="{{ recording.id }}" 
+                                        id="transcript-btn-{{ recording.id }}"
+                                        class="w-full text-xs bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded transition-colors duration-200">
+                                    <i class="fas fa-magic ml-1"></i>
+                                    تحويل إلى نص مكتوب
+                                </button>
+                                <div id="transcript-{{ recording.id }}" class="transcript-content hidden bg-white border border-blue-200 rounded p-2 text-xs mt-2">
+                                    <div class="text-blue-800 font-semibold mb-1">النص المكتوب:</div>
+                                    <div dir="auto" class="text-gray-700 leading-relaxed transcript-text"></div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        <!-- Comments -->
+                        {% for comment in comments %}
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 dir="rtl" class="text-sm font-semibold text-blue-900 flex items-center">
+                                    <i class="fas fa-comment ml-2"></i>
+                                    تعليق نصي
+                                </h4>
+                                <span class="text-xs text-gray-500">{{ comment.created_at.strftime('%H:%M') }}</span>
+                            </div>
+                            
+                            <p dir="rtl" class="text-sm text-gray-700 mb-2">{{ comment.content }}</p>
+                            
+                            {% if comment.author %}
+                            <div class="text-xs text-gray-600">
+                                <i class="fas fa-user ml-1"></i>
+                                {{ comment.author }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+
+                        {% if not recordings and not comments %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-microphone text-2xl text-gray-300 mb-2"></i>
+                            <p dir="rtl" class="text-xs text-gray-500">لا توجد تسجيلات بعد</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Canvas: Summary & Insights -->
+            <div class="w-full lg:w-2/3 main-canvas">
+                <div class="bg-white rounded-2xl shadow-xl border border-gray-100 h-full">
+                    <!-- Canvas Header -->
+                    <div class="p-6 sm:p-8 border-b border-gray-100">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <div>
+                                <h2 dir="rtl" class="text-xl sm:text-2xl font-bold text-gray-900 flex items-center">
+                                    <i class="fas fa-chart-line ml-2 text-green-600"></i>
+                                    التقرير والتحليل الذكي
+                                </h2>
+                                <p dir="rtl" class="text-sm text-gray-600 mt-1">ملخص شامل للتسجيلات والتعليقات مع الرؤى والتوصيات</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button id="regenerateSummaryBtn" 
+                                        class="hidden bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded transition-all duration-200 text-sm">
+                                    <i class="fas fa-redo ml-1"></i>
+                                    إعادة إنشاء
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Canvas Content -->
+                    <div class="p-6 sm:p-8">
+                        <!-- Loading State -->
+                        <div id="summaryLoading" class="hidden text-center py-12">
+                            <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mb-4"></div>
+                            <p dir="rtl" class="text-gray-600">جاري إنشاء التقرير والتحليل...</p>
+                            <p dir="rtl" class="text-sm text-gray-500 mt-2">قد يستغرق هذا بضع ثوانٍ</p>
+                        </div>
+
+                        <!-- Empty State -->
+                        <div id="summaryEmpty" class="text-center py-12 {% if current_summary %}hidden{% endif %}">
+                            <div class="mb-6">
+                                <i class="fas fa-robot text-6xl text-gray-300 mb-4"></i>
+                                <h3 dir="rtl" class="text-lg font-semibold text-gray-700 mb-2">مرحباً بك في التحليل الذكي</h3>
+                                <p dir="rtl" class="text-gray-600 mb-4">اضغط على الزر الأخضر أعلاه لإنشاء تقرير شامل</p>
+                            </div>
+                            
+                            <div class="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border border-green-200">
+                                <h4 dir="rtl" class="text-base font-semibold text-green-800 mb-3">ماذا ستحصل عليه؟</h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                                    <div dir="rtl" class="flex items-center text-green-700">
+                                        <i class="fas fa-check-circle ml-2 text-green-500"></i>
+                                        ملخص تنفيذي للمحتوى
+                                    </div>
+                                    <div dir="rtl" class="flex items-center text-green-700">
+                                        <i class="fas fa-check-circle ml-2 text-green-500"></i>
+                                        استخراج النقاط الرئيسية
+                                    </div>
+                                    <div dir="rtl" class="flex items-center text-green-700">
+                                        <i class="fas fa-check-circle ml-2 text-green-500"></i>
+                                        تحليل عميق والرؤى
+                                    </div>
+                                    <div dir="rtl" class="flex items-center text-green-700">
+                                        <i class="fas fa-check-circle ml-2 text-green-500"></i>
+                                        توصيات للمتابعة
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Error State -->
+                        <div id="summaryError" class="hidden text-center py-12">
+                            <i class="fas fa-exclamation-triangle text-4xl text-red-400 mb-4"></i>
+                            <h3 dir="rtl" class="text-lg font-semibold text-red-700 mb-2">حدث خطأ</h3>
+                            <p id="summaryErrorMessage" dir="rtl" class="text-red-600 mb-4">فشل في إنشاء التقرير</p>
+                            <button onclick="generateSummary()" 
+                                    class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition-all duration-200">
+                                <i class="fas fa-redo ml-2"></i>
+                                المحاولة مرة أخرى
+                            </button>
+                        </div>
+
+                        <!-- Current Summary Content -->
+                        {% if current_summary %}
+                        <div id="currentSummary" class="{% if not current_summary %}hidden{% endif %}">
+                            <!-- Summary Header -->
+                            <div class="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h4 dir="rtl" class="text-lg font-semibold text-green-800 flex items-center">
+                                            <i class="fas fa-check-circle ml-2"></i>
+                                            التقرير الحالي (الإصدار {{ current_summary.summary_version }})
+                                        </h4>
+                                        <p dir="rtl" class="text-sm text-green-700 mt-1">
+                                            تم إنشاؤه في {{ current_summary.created_at.strftime('%Y-%m-%d %H:%M') }} 
+                                            {% if current_summary.created_by %}بواسطة {{ current_summary.created_by }}{% endif %}
+                                        </p>
+                                    </div>
+                                    {% if all_summaries|length > 1 %}
+                                    <button onclick="toggleHistoricalSummaries()" 
+                                            class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm transition-all duration-200">
+                                        <i class="fas fa-history ml-1"></i>
+                                        <span id="historyToggleText">التاريخ ({{ all_summaries|length - 1 }})</span>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                                        <!-- Current Summary Content -->
+            <div id="currentSummaryContent" class="prose prose-sm sm:prose max-w-none markdown-content">
+                {{ current_summary.summary_html | safe }}
+            </div>
+                            
+                            <!-- Current Summary Stats -->
+                            <div class="mt-8 p-4 bg-gray-50 rounded-lg border">
+                                <h4 dir="rtl" class="text-sm font-semibold text-gray-700 mb-3">إحصائيات التقرير الحالي</h4>
+                                <div class="grid grid-cols-2 sm:grid-cols-5 gap-4 text-center">
+                                    <div>
+                                        <div class="text-lg font-bold text-cyan-600">{{ current_summary.transcripts_count }}</div>
+                                        <div class="text-xs text-gray-600">تسجيلات صوتية</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-lg font-bold text-blue-600">{{ current_summary.comments_count }}</div>
+                                        <div class="text-xs text-gray-600">تعليقات نصية</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-lg font-bold text-green-600">{{ current_summary.summary_version }}</div>
+                                        <div class="text-xs text-gray-600">رقم الإصدار</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-lg font-bold text-purple-600">{{ current_summary.model_used or 'AI' }}</div>
+                                        <div class="text-xs text-gray-600">النموذج المستخدم</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-lg font-bold text-orange-600">{{ current_summary.created_at.strftime('%H:%M') }}</div>
+                                        <div class="text-xs text-gray-600">وقت الإنشاء</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Historical Summaries -->
+                        {% if all_summaries|length > 1 %}
+                        <div id="historicalSummaries" class="hidden mt-8">
+                            <div class="border-t border-gray-200 pt-6">
+                                <h4 dir="rtl" class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                                    <i class="fas fa-history ml-2 text-gray-600"></i>
+                                    التقارير السابقة ({{ all_summaries|length - 1 }} تقرير)
+                                </h4>
+                                
+                                <div class="space-y-3">
+                                    {% for summary in all_summaries %}
+                                    {% if not summary.is_current %}
+                                    <div class="border border-gray-200 rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors duration-200">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex-1">
+                                                <div class="flex items-center mb-2">
+                                                    <span class="bg-gray-200 text-gray-800 px-2 py-1 rounded-full text-xs font-semibold ml-3">
+                                                        الإصدار {{ summary.summary_version }}
+                                                    </span>
+                                                    <span class="text-sm text-gray-600">
+                                                        {{ summary.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                                    </span>
+                                                    {% if summary.created_by %}
+                                                    <span class="text-xs text-gray-500 mr-2">
+                                                        - {{ summary.created_by }}
+                                                    </span>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="flex items-center gap-4 text-xs text-gray-600">
+                                                    <span><i class="fas fa-microphone ml-1"></i>{{ summary.transcripts_count }} تسجيل</span>
+                                                    <span><i class="fas fa-comment ml-1"></i>{{ summary.comments_count }} تعليق</span>
+                                                    {% if summary.model_used %}
+                                                    <span><i class="fas fa-robot ml-1"></i>{{ summary.model_used }}</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div class="flex gap-2">
+                                                <button onclick="viewHistoricalSummary({{ summary.id }})" 
+                                                        class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-sm transition-all duration-200">
+                                                    <i class="fas fa-eye ml-1"></i>
+                                                    عرض
+                                                </button>
+                                                <button onclick="printHistoricalSummary({{ summary.id }})" 
+                                                        class="bg-cyan-500 hover:bg-cyan-600 text-white px-3 py-2 rounded text-sm transition-all duration-200">
+                                                    <i class="fas fa-print ml-1"></i>
+                                                    طباعة
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Dynamic Summary Content (for newly generated or historical) -->
+                        <div id="summaryContent" class="hidden">
+                            <div id="summaryHtml" class="prose prose-sm sm:prose max-w-none"></div>
+                            
+                            <!-- Summary Stats -->
+                            <div class="mt-8 p-4 bg-gray-50 rounded-lg border">
+                                <h4 dir="rtl" class="text-sm font-semibold text-gray-700 mb-3">إحصائيات التقرير</h4>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+                                    <div>
+                                        <div id="transcriptsCount" class="text-lg font-bold text-cyan-600">0</div>
+                                        <div class="text-xs text-gray-600">تسجيلات صوتية</div>
+                                    </div>
+                                    <div>
+                                        <div id="commentsCount" class="text-lg font-bold text-blue-600">0</div>
+                                        <div class="text-xs text-gray-600">تعليقات نصية</div>
+                                    </div>
+                                    <div>
+                                        <div id="summaryDate" class="text-lg font-bold text-green-600">الآن</div>
+                                        <div class="text-xs text-gray-600">تاريخ التقرير</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-lg font-bold text-purple-600">AI</div>
+                                        <div class="text-xs text-gray-600">مولد بالذكاء الاصطناعي</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast" class="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg hidden z-50">
+    <div class="flex items-center">
+        <i class="fas fa-check-circle ml-2"></i>
+        <span id="toast-message">تم بنجاح</span>
+    </div>
+</div>
+
+
+
+<script>
+let mediaRecorder;
+let audioChunks = [];
+let recordingStartTime;
+let recordingInterval;
+let audioContext;
+let analyser;
+let dataArray;
+let canvas;
+let canvasContext;
+let animationId;
+
+const recordButton = document.getElementById('recordButton');
+const stopButton = document.getElementById('stopButton');
+const playButton = document.getElementById('playButton');
+const saveButton = document.getElementById('saveButton');
+const recordIcon = document.getElementById('recordIcon');
+const recordingStatus = document.getElementById('recordingStatus');
+const recordingTime = document.getElementById('recordingTime');
+const recordingPreview = document.getElementById('recordingPreview');
+const previewAudio = document.getElementById('previewAudio');
+const canvas_el = document.getElementById('visualizer');
+const commentForm = document.getElementById('commentForm');
+
+// Initialize canvas
+canvas = canvas_el;
+canvasContext = canvas.getContext('2d');
+
+// Initialize recording
+recordButton.addEventListener('click', startRecording);
+stopButton.addEventListener('click', stopRecording);
+playButton.addEventListener('click', playRecording);
+saveButton.addEventListener('click', saveRecording);
+
+async function startRecording() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                sampleRate: 44100
+            } 
+        });
+        
+        // Set up audio context for visualization
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        const source = audioContext.createMediaStreamSource(stream);
+        source.connect(analyser);
+        analyser.fftSize = 256;
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        
+        // Start visualization
+        drawVisualizer();
+        
+        mediaRecorder = new MediaRecorder(stream, {
+            mimeType: 'audio/webm;codecs=opus'
+        });
+        
+        audioChunks = [];
+        
+        mediaRecorder.ondataavailable = event => {
+            audioChunks.push(event.data);
+        };
+        
+        mediaRecorder.onstop = () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            previewAudio.src = audioUrl;
+            recordingPreview.classList.remove('hidden');
+            
+            playButton.disabled = false;
+            saveButton.disabled = false;
+            
+            // Stop visualization
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            clearCanvas();
+        };
+        
+        mediaRecorder.start();
+        recordingStartTime = Date.now();
+        
+        // Update UI
+        recordButton.disabled = true;
+        stopButton.disabled = false;
+        recordIcon.className = 'fas fa-stop text-xl sm:text-2xl';
+        recordButton.className = recordButton.className.replace('bg-red-500 hover:bg-red-600', 'bg-gray-400');
+        recordingStatus.textContent = 'جاري التسجيل...';
+        
+        // Start timer
+        recordingInterval = setInterval(updateRecordingTime, 1000);
+        
+    } catch (error) {
+        console.error('Error accessing microphone:', error);
+        showToast('خطأ في الوصول للميكروفون. تأكد من السماح بالوصول للميكروفون.', 'error');
+    }
+}
+
+function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+    }
+    
+    // Update UI
+    recordButton.disabled = false;
+    stopButton.disabled = true;
+    recordIcon.className = 'fas fa-microphone text-xl sm:text-2xl';
+    recordButton.className = recordButton.className.replace('bg-gray-400', 'bg-red-500 hover:bg-red-600');
+    recordingStatus.textContent = 'التسجيل متوقف';
+    
+    // Stop timer
+    clearInterval(recordingInterval);
+}
+
+function playRecording() {
+    previewAudio.play();
+}
+
+function updateRecordingTime() {
+    const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+    const minutes = Math.floor(elapsed / 60);
+    const seconds = elapsed % 60;
+    recordingTime.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function drawVisualizer() {
+    animationId = requestAnimationFrame(drawVisualizer);
+    
+    analyser.getByteFrequencyData(dataArray);
+    
+    canvasContext.fillStyle = '#f3f4f6';
+    canvasContext.fillRect(0, 0, canvas.width, canvas.height);
+    
+    const barWidth = (canvas.width / dataArray.length) * 2.5;
+    let barHeight;
+    let x = 0;
+    
+    for (let i = 0; i < dataArray.length; i++) {
+        barHeight = (dataArray[i] / 255) * canvas.height;
+        
+        const r = barHeight + 25 * (i / dataArray.length);
+        const g = 250 * (i / dataArray.length);
+        const b = 50;
+        
+        canvasContext.fillStyle = `rgb(${r},${g},${b})`;
+        canvasContext.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+        
+        x += barWidth + 1;
+    }
+}
+
+function clearCanvas() {
+    canvasContext.fillStyle = '#f3f4f6';
+    canvasContext.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+async function saveRecording() {
+    if (audioChunks.length === 0) {
+        showToast('لا يوجد تسجيل للحفظ', 'error');
+        return;
+    }
+    
+    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.webm');
+    
+    try {
+        saveButton.disabled = true;
+        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i>جاري الحفظ...';
+        
+        const response = await fetch(`/api/voice_notes/{{ voice_note.id }}/upload`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(data.message, 'success');
+            
+            // Add new recording to list
+            addNewRecordingToList(data);
+            
+            // Reset recording controls
+            resetRecordingControls();
+            
+            // Automatically start transcription for the new recording
+            setTimeout(() => {
+                generateTranscript(data.recording_id, true); // true flag for auto-expand
+            }, 500); // Small delay to ensure UI is updated
+            
+        } else {
+            showToast(data.message, 'error');
+        }
+        
+    } catch (error) {
+        showToast('حدث خطأ أثناء الحفظ', 'error');
+        console.error('Error saving recording:', error);
+    } finally {
+        saveButton.disabled = false;
+        saveButton.innerHTML = '<i class="fas fa-save ml-2"></i>حفظ';
+    }
+}
+
+function resetRecordingControls() {
+    audioChunks = [];
+    recordingPreview.classList.add('hidden');
+    previewAudio.src = '';
+    playButton.disabled = true;
+    saveButton.disabled = true;
+    recordingTime.textContent = '00:00';
+    recordingStatus.textContent = 'اضغط لبدء التسجيل';
+    clearCanvas();
+}
+
+function addNewRecordingToList(recordingData) {
+    const recordingsList = document.getElementById('recordingsList');
+    const now = new Date();
+    const timeString = now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+    
+    const recordingElement = document.createElement('div');
+    recordingElement.className = 'bg-cyan-50 border border-cyan-200 rounded-lg p-4 new-recording';
+    recordingElement.setAttribute('data-recording-id', recordingData.recording_id);
+    recordingElement.innerHTML = `
+        <div class="flex items-center justify-between mb-2">
+            <h4 dir="rtl" class="text-sm font-semibold text-cyan-900 flex items-center">
+                <i class="fas fa-microphone ml-2"></i>
+                تسجيل صوتي
+                <span class="bg-green-500 text-white text-xs px-2 py-1 rounded-full mr-2 animate-pulse">جديد</span>
+            </h4>
+            <span class="text-xs text-gray-500">${timeString}</span>
+        </div>
+        
+        <audio controls class="w-full mb-2" preload="metadata">
+            <source src="/voice_recordings/${recordingData.filename}" type="audio/webm">
+            متصفحك لا يدعم تشغيل الصوت
+        </audio>
+        
+        <div class="text-xs text-gray-600 mb-2">
+            <span>الحجم: ${(recordingData.file_size / 1024).toFixed(1)} KB</span>
+        </div>
+        
+        <!-- Transcript Section -->
+        <div class="mt-3">
+            <button data-action="generate-transcript" data-recording-id="${recordingData.recording_id}" 
+                    id="transcript-btn-${recordingData.recording_id}"
+                    class="w-full text-xs bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded transition-colors duration-200">
+                <i class="fas fa-magic ml-1"></i>
+                تحويل إلى نص مكتوب
+            </button>
+            <div id="transcript-${recordingData.recording_id}" class="transcript-content hidden bg-white border border-blue-200 rounded p-2 text-xs mt-2">
+                <div class="text-blue-800 font-semibold mb-1">النص المكتوب:</div>
+                <div dir="auto" class="text-gray-700 leading-relaxed transcript-text"></div>
+            </div>
+        </div>
+    `;
+    
+    // Insert at the beginning
+    recordingsList.insertBefore(recordingElement, recordingsList.firstChild);
+    
+    // Remove "new" badge from other recordings
+    const otherNewRecordings = recordingsList.querySelectorAll('.new-recording:not([data-recording-id="' + recordingData.recording_id + '"])');
+    otherNewRecordings.forEach(recording => {
+        recording.classList.remove('new-recording');
+        const newBadge = recording.querySelector('.animate-pulse');
+        if (newBadge) {
+            newBadge.remove();
+        }
+    });
+    
+    // Remove empty state if it exists
+    const emptyState = recordingsList.querySelector('.text-center.py-8');
+    if (emptyState) {
+        emptyState.remove();
+    }
+    
+    // Remove "new" class and badge after 10 seconds
+    setTimeout(() => {
+        recordingElement.classList.remove('new-recording');
+        const newBadge = recordingElement.querySelector('.animate-pulse');
+        if (newBadge) {
+            newBadge.style.transition = 'opacity 0.5s ease-out';
+            newBadge.style.opacity = '0';
+            setTimeout(() => {
+                if (newBadge.parentNode) {
+                    newBadge.remove();
+                }
+            }, 500);
+        }
+    }, 10000);
+}
+
+// Handle comment form
+commentForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const content = document.getElementById('commentContent').value.trim();
+    const author = document.getElementById('commentAuthor').value.trim();
+    
+    if (!content) {
+        showToast('يرجى إدخال محتوى التعليق', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/voice_notes/{{ voice_note.id }}/comment`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                content: content,
+                author: author || 'مجهول'
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(data.message, 'success');
+            
+            // Add new comment to list
+            addNewCommentToList(content, author || 'مجهول', data.created_at);
+            
+            // Clear form
+            document.getElementById('commentContent').value = '';
+            document.getElementById('commentAuthor').value = '';
+        } else {
+            showToast(data.message, 'error');
+        }
+        
+    } catch (error) {
+        showToast('حدث خطأ أثناء إضافة التعليق', 'error');
+        console.error('Error adding comment:', error);
+    }
+});
+
+function addNewCommentToList(content, author, createdAt) {
+    const recordingsList = document.getElementById('recordingsList');
+    const now = new Date();
+    const timeString = now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+    
+    const commentElement = document.createElement('div');
+    commentElement.className = 'bg-blue-50 border border-blue-200 rounded-lg p-4';
+    commentElement.innerHTML = `
+        <div class="flex items-center justify-between mb-2">
+            <h4 dir="rtl" class="text-sm font-semibold text-blue-900 flex items-center">
+                <i class="fas fa-comment ml-2"></i>
+                تعليق نصي
+            </h4>
+            <span class="text-xs text-gray-500">${timeString}</span>
+        </div>
+        
+        <p dir="rtl" class="text-sm text-gray-700 mb-2">${content}</p>
+        
+        <div class="text-xs text-gray-600">
+            <i class="fas fa-user ml-1"></i>
+            ${author}
+        </div>
+    `;
+    
+    // Insert at the beginning
+    recordingsList.insertBefore(commentElement, recordingsList.firstChild);
+    
+    // Remove empty state if it exists
+    const emptyState = recordingsList.querySelector('.text-center.py-8');
+    if (emptyState) {
+        emptyState.remove();
+    }
+}
+
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    const toastMessage = document.getElementById('toast-message');
+    
+    toastMessage.textContent = message;
+    
+    // Set colors based on type
+    if (type === 'error') {
+        toast.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+    } else {
+        toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+    }
+    
+    toast.classList.remove('hidden');
+    
+    setTimeout(() => {
+        toast.classList.add('hidden');
+    }, 3000);
+}
+
+// Set canvas size
+function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+}
+
+// Initialize canvas size
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// Auto-resize textarea
+document.getElementById('commentContent').addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = this.scrollHeight + 'px';
+});
+
+// Handle transcript buttons
+document.addEventListener('click', function(e) {
+    const action = e.target.closest('[data-action]')?.getAttribute('data-action');
+    const recordingId = e.target.closest('[data-recording-id]')?.getAttribute('data-recording-id');
+    
+    if (action === 'generate-transcript' && recordingId) {
+        generateTranscript(recordingId, false); // Manual generation, don't auto-expand
+    } else if (action === 'toggle-transcript' && recordingId) {
+        toggleTranscript(recordingId);
+    }
+});
+
+function generateTranscript(recordingId, autoExpand = false) {
+    const button = document.getElementById(`transcript-btn-${recordingId}`);
+    const transcriptContainer = document.getElementById(`transcript-${recordingId}`);
+    
+    if (!button) return;
+    
+    // Update button to loading state
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i>جاري التحويل...';
+    button.disabled = true;
+    
+    // Show a different message for automatic transcription
+    if (autoExpand) {
+        showToast('جاري تحويل التسجيل الجديد إلى نص تلقائياً...', 'success');
+    }
+    
+    fetch(`/api/voice_recordings/${recordingId}/transcript`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            if (autoExpand) {
+                showToast('✨ تم تحويل التسجيل إلى نص وعرضه تلقائياً!', 'success');
+            } else {
+                showToast(data.message, 'success');
+            }
+            
+            // Update button to show transcript
+            button.innerHTML = '<i class="fas fa-eye-slash ml-1"></i>إخفاء النص المكتوب';
+            button.className = button.className.replace('bg-blue-500 hover:bg-blue-600', 'bg-green-500 hover:bg-green-600');
+            button.setAttribute('data-action', 'toggle-transcript');
+            
+            // Show transcript
+            const transcriptText = transcriptContainer.querySelector('.transcript-text');
+            if (transcriptText) {
+                transcriptText.textContent = data.transcript;
+            }
+            
+            // Add language info if available
+            if (data.language_code && data.language_probability) {
+                const languageInfo = document.createElement('div');
+                languageInfo.className = 'text-xs text-gray-500 mb-2';
+                languageInfo.innerHTML = `
+                    <i class="fas fa-language ml-1"></i>
+                    اللغة: ${data.language_code} (${Math.round(data.language_probability * 100)}% ثقة)
+                    ${data.cached ? ' | <i class="fas fa-check ml-1"></i>محفوظ مسبقاً' : ''}
+                `;
+                transcriptContainer.insertBefore(languageInfo, transcriptContainer.firstChild);
+            }
+            
+            // Always show transcript (expanded) - especially for auto-expand
+            transcriptContainer.classList.remove('hidden');
+            
+            // If auto-expand, scroll to the new recording smoothly
+            if (autoExpand) {
+                setTimeout(() => {
+                    const recordingElement = document.querySelector(`[data-recording-id="${recordingId}"]`);
+                    if (recordingElement) {
+                        recordingElement.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'start' 
+                        });
+                        // Add a subtle highlight effect
+                        recordingElement.style.boxShadow = '0 0 20px rgba(34, 197, 94, 0.3)';
+                        setTimeout(() => {
+                            recordingElement.style.boxShadow = '';
+                        }, 2000);
+                    }
+                }, 300);
+            }
+            
+        } else {
+            showToast(data.message, 'error');
+            // Restore button
+            button.innerHTML = originalHTML;
+        }
+    })
+    .catch(error => {
+        showToast('حدث خطأ أثناء تحويل التسجيل إلى نص', 'error');
+        console.error('Error:', error);
+        // Restore button
+        button.innerHTML = originalHTML;
+    })
+    .finally(() => {
+        button.disabled = false;
+    });
+}
+
+function toggleTranscript(recordingId) {
+    const transcriptContainer = document.getElementById(`transcript-${recordingId}`);
+    const button = document.querySelector(`[data-recording-id="${recordingId}"][data-action="toggle-transcript"]`);
+    
+    if (!transcriptContainer || !button) return;
+    
+    const isHidden = transcriptContainer.classList.contains('hidden');
+    
+    if (isHidden) {
+        transcriptContainer.classList.remove('hidden');
+        button.innerHTML = '<i class="fas fa-eye-slash ml-1"></i>إخفاء النص المكتوب';
+    } else {
+        transcriptContainer.classList.add('hidden');
+        button.innerHTML = '<i class="fas fa-file-text ml-1"></i>عرض النص المكتوب';
+    }
+}
+
+// Summary Generation Functions
+const generateSummaryBtn = document.getElementById('generateSummaryBtn');
+const regenerateSummaryBtn = document.getElementById('regenerateSummaryBtn');
+
+if (generateSummaryBtn) {
+    generateSummaryBtn.addEventListener('click', generateSummary);
+}
+
+if (regenerateSummaryBtn) {
+    regenerateSummaryBtn.addEventListener('click', generateSummary);
+}
+
+async function generateSummary() {
+    const summaryEmpty = document.getElementById('summaryEmpty');
+    const summaryLoading = document.getElementById('summaryLoading');
+    const summaryError = document.getElementById('summaryError');
+    const summaryContent = document.getElementById('summaryContent');
+    const existingSummary = document.getElementById('existingSummary');
+    
+    // Hide all states
+    summaryEmpty.classList.add('hidden');
+    summaryError.classList.add('hidden');
+    summaryContent.classList.add('hidden');
+    if (existingSummary) existingSummary.classList.add('hidden');
+    
+    // Show loading state
+    summaryLoading.classList.remove('hidden');
+    
+    // Disable generate button
+    generateSummaryBtn.disabled = true;
+    generateSummaryBtn.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i>جاري الإنشاء...';
+    
+         try {
+         const voiceNoteId = window.location.pathname.split('/').pop();
+         const response = await fetch(`/api/voice_notes/${voiceNoteId}/generate_summary`, {
+             method: 'POST',
+             headers: {
+                 'Content-Type': 'application/json',
+             },
+             body: JSON.stringify({})
+         });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Hide loading
+            summaryLoading.classList.add('hidden');
+            
+            // Show success content
+            const summaryHtml = document.getElementById('summaryHtml');
+            summaryHtml.innerHTML = data.summary_html;
+            
+            // Convert any remaining markdown to HTML
+            convertMarkdownInElement(summaryHtml);
+            
+            // Update stats
+            document.getElementById('transcriptsCount').textContent = data.transcripts_count || 0;
+            document.getElementById('commentsCount').textContent = data.comments_count || 0;
+            document.getElementById('summaryDate').textContent = new Date().toLocaleDateString('ar-SA');
+            
+            summaryContent.classList.remove('hidden');
+            
+            // Show regenerate button
+            regenerateSummaryBtn.classList.remove('hidden');
+            
+            showToast(data.message, 'success');
+            
+        } else {
+            // Show error
+            summaryLoading.classList.add('hidden');
+            summaryError.classList.remove('hidden');
+            document.getElementById('summaryErrorMessage').textContent = data.message;
+            showToast(data.message, 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error generating summary:', error);
+        summaryLoading.classList.add('hidden');
+        summaryError.classList.remove('hidden');
+        document.getElementById('summaryErrorMessage').textContent = 'حدث خطأ في الشبكة';
+        showToast('حدث خطأ أثناء إنشاء التقرير', 'error');
+    } finally {
+        // Re-enable generate button
+        generateSummaryBtn.disabled = false;
+        generateSummaryBtn.innerHTML = '<i class="fas fa-magic ml-2"></i><span class="hidden sm:inline">إنشاء تقرير شامل</span><span class="sm:hidden">تقرير</span>';
+    }
+}
+
+function showExistingSummary() {
+    const existingSummaryContent = document.getElementById('existingSummaryContent');
+    const summaryEmpty = document.getElementById('summaryEmpty');
+    
+    if (existingSummaryContent.classList.contains('hidden')) {
+        existingSummaryContent.classList.remove('hidden');
+        summaryEmpty.classList.add('hidden');
+    } else {
+        existingSummaryContent.classList.add('hidden');
+        summaryEmpty.classList.remove('hidden');
+    }
+}
+
+// Auto-resize textarea for mobile
+document.getElementById('commentContent').addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = this.scrollHeight + 'px';
+});
+
+// Initialize canvas size and auto-resize functionality
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// Markdown to HTML converter for fallback
+function convertMarkdownInElement(element) {
+    if (!element) return;
+    
+    // Get all text nodes in the element
+    const walker = document.createTreeWalker(
+        element,
+        NodeFilter.SHOW_TEXT,
+        null,
+        false
+    );
+    
+    const textNodes = [];
+    let node;
+    while (node = walker.nextNode()) {
+        textNodes.push(node);
+    }
+    
+    // Process each text node
+    textNodes.forEach(textNode => {
+        let text = textNode.textContent;
+        
+        // Convert **bold** to <strong>
+        if (text.includes('**')) {
+            let html = text.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-gray-900">$1</strong>');
+            
+            if (html !== text) {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+                
+                // Replace the text node with the new HTML content
+                const fragment = document.createDocumentFragment();
+                while (tempDiv.firstChild) {
+                    fragment.appendChild(tempDiv.firstChild);
+                }
+                textNode.parentNode.replaceChild(fragment, textNode);
+            }
+        }
+    });
+}
+
+// Apply markdown conversion to existing content
+document.addEventListener('DOMContentLoaded', function() {
+    // Convert markdown in current summary
+    const currentSummary = document.getElementById('currentSummaryContent');
+    if (currentSummary) {
+        convertMarkdownInElement(currentSummary);
+    }
+    
+    // Convert markdown in any existing summary content
+    const summaryHtml = document.getElementById('summaryHtml');
+    if (summaryHtml) {
+        convertMarkdownInElement(summaryHtml);
+    }
+});
+
+// Historical Summaries Functions
+function toggleHistoricalSummaries() {
+    const historicalDiv = document.getElementById('historicalSummaries');
+    const button = event.target.closest('button');
+    
+    if (!historicalDiv || !button) return;
+    
+    if (historicalDiv.classList.contains('hidden')) {
+        historicalDiv.classList.remove('hidden');
+        button.innerHTML = '<i class="fas fa-eye-slash ml-1"></i><span>إخفاء التاريخ</span>';
+    } else {
+        historicalDiv.classList.add('hidden');
+        const count = '{{ all_summaries|length - 1 }}' || '0';
+        button.innerHTML = `<i class="fas fa-history ml-1"></i><span>التاريخ (${count})</span>`;
+    }
+}
+
+function viewHistoricalSummary(summaryId) {
+    // Show loading state
+    showToast('جاري تحميل التقرير التاريخي...', 'info');
+    
+    fetch(`/api/voice_summaries/${summaryId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Hide other content
+                document.getElementById('summaryEmpty')?.classList.add('hidden');
+                document.getElementById('currentSummary')?.classList.add('hidden');
+                document.getElementById('historicalSummaries')?.classList.add('hidden');
+                
+                // Show the historical summary
+                const summaryContent = document.getElementById('summaryContent');
+                const summaryHtml = document.getElementById('summaryHtml');
+                
+                // Clear previous content and add back button first
+                summaryHtml.innerHTML = '';
+                summaryContent.innerHTML = '';
+                
+                // Add back button
+                const backButton = document.createElement('div');
+                backButton.className = 'mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg';
+                backButton.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <p dir="rtl" class="text-sm text-blue-800">
+                            <i class="fas fa-info-circle ml-2"></i>
+                            عرض التقرير التاريخي - الإصدار ${data.summary.version}
+                            <span class="text-xs text-blue-600 mr-2">(${new Date(data.summary.created_at).toLocaleString('ar-SA')})</span>
+                        </p>
+                        <button onclick="showCurrentSummary()" 
+                                class="text-blue-600 hover:text-blue-800 text-sm underline">
+                            العودة للتقرير الحالي
+                        </button>
+                    </div>
+                `;
+                
+                // Add content div
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'prose prose-sm sm:prose max-w-none';
+                contentDiv.innerHTML = data.summary.summary_html;
+                
+                // Add stats div
+                const statsDiv = document.createElement('div');
+                statsDiv.className = 'mt-8 p-4 bg-gray-50 rounded-lg border';
+                statsDiv.innerHTML = `
+                    <h4 dir="rtl" class="text-sm font-semibold text-gray-700 mb-3">إحصائيات التقرير التاريخي</h4>
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-4 text-center">
+                        <div>
+                            <div class="text-lg font-bold text-cyan-600">${data.summary.transcripts_count}</div>
+                            <div class="text-xs text-gray-600">تسجيلات صوتية</div>
+                        </div>
+                        <div>
+                            <div class="text-lg font-bold text-blue-600">${data.summary.comments_count}</div>
+                            <div class="text-xs text-gray-600">تعليقات نصية</div>
+                        </div>
+                        <div>
+                            <div class="text-lg font-bold text-green-600">${data.summary.version}</div>
+                            <div class="text-xs text-gray-600">رقم الإصدار</div>
+                        </div>
+                        <div>
+                            <div class="text-lg font-bold text-purple-600">${data.summary.model_used || 'AI'}</div>
+                            <div class="text-xs text-gray-600">النموذج المستخدم</div>
+                        </div>
+                        <div>
+                            <div class="text-lg font-bold text-orange-600">${new Date(data.summary.created_at).toLocaleTimeString('ar-SA', {hour: '2-digit', minute: '2-digit'})}</div>
+                            <div class="text-xs text-gray-600">وقت الإنشاء</div>
+                        </div>
+                    </div>
+                `;
+                
+                summaryContent.appendChild(backButton);
+                summaryContent.appendChild(contentDiv);
+                summaryContent.appendChild(statsDiv);
+                summaryContent.classList.remove('hidden');
+                
+                // Convert any remaining markdown to HTML
+                convertMarkdownInElement(contentDiv);
+                
+                showToast(`تم تحميل التقرير التاريخي (الإصدار ${data.summary.version})`, 'success');
+            } else {
+                showToast('فشل في تحميل التقرير التاريخي', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching historical summary:', error);
+            showToast('حدث خطأ أثناء تحميل التقرير', 'error');
+        });
+}
+
+function showCurrentSummary() {
+    // Hide the dynamic content
+    document.getElementById('summaryContent')?.classList.add('hidden');
+    
+    // Show current summary or empty state
+    const currentSummary = document.getElementById('currentSummary');
+    if (currentSummary) {
+        currentSummary.classList.remove('hidden');
+        document.getElementById('historicalSummaries')?.classList.add('hidden');
+    } else {
+        document.getElementById('summaryEmpty')?.classList.remove('hidden');
+    }
+    
+    showToast('تم العودة للتقرير الحالي', 'success');
+}
+
+// Update the generateSummary function to handle the new historical system
+const originalGenerateSummary = generateSummary;
+generateSummary = async function() {
+    const currentSummary = document.getElementById('currentSummary');
+    
+    // Call original function
+    const result = await originalGenerateSummary.apply(this, arguments);
+    
+    // After successful generation, hide current summary and show new one
+    if (currentSummary && !document.getElementById('summaryError').classList.contains('hidden') === false) {
+        currentSummary.classList.add('hidden');
+        
+        // Reload page to show updated historical summaries
+        setTimeout(() => {
+            window.location.reload();
+        }, 2000);
+    }
+    
+    return result;
+};
+
+// Simple print functionality - prints the main canvas area
+function printCurrentReport() {
+    window.print();
+}
+
+function printHistoricalSummary(summaryId) {
+    window.print();
+}
+
+// Enable print button - always available since we just print the canvas
+function updatePrintButtonState() {
+    const printButton = document.getElementById('printReportBtn');
+    
+    if (printButton) {
+        printButton.disabled = false;
+        printButton.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+}
+
+// Check print button state on page load and after summary generation
+document.addEventListener('DOMContentLoaded', function() {
+    updatePrintButtonState();
+});
+
+// Update print button state after successful summary generation
+const originalShowToast = showToast;
+showToast = function(message, type) {
+    // Call original function
+    originalShowToast.call(this, message, type);
+    
+    // If it's a success message about generating report, update print button
+    if (type === 'success' && message.includes('تقرير')) {
+        setTimeout(updatePrintButtonState, 500);
+        
+        // Also update print content with newly generated summary
+        setTimeout(() => {
+            const summaryHtml = document.getElementById('summaryHtml');
+            const printReportContent = document.getElementById('print-report-content');
+            const printReportDate = document.getElementById('print-report-date');
+            
+            if (summaryHtml && printReportContent) {
+                printReportContent.innerHTML = summaryHtml.innerHTML;
+                printReportDate.textContent = `تاريخ التقرير: ${new Date().toLocaleString('ar-SA')}`;
+            }
+        }, 1000);
+    }
+};
+</script>
+{% endblock %} 

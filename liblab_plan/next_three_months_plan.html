@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>خطة عمل لبلاب التفاعلية</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Chosen Palette: Desert Calm -->
+    <!-- Application Structure Plan: تم تصميم التطبيق كلوحة تحكم تفاعلية لخطة العمل. الهيكل الرئيسي يعتمد على التنقل بين الأشهر الثلاثة عبر أزرار واضحة. عند اختيار شهر معين، يتم عرض تفاصيله المكونة من أربعة مسارات رئيسية (الاستراتيجية، التطوير التقني، بناء قاعدة البيانات، التسويق) على شكل بطاقات منظمة. بالإضافة إلى ذلك، يوجد مخطط دائري (Donut Chart) يتغير ديناميكياً ليعرض توزيع المهام على المسارات المختلفة لكل شهر. تم اختيار هذا الهيكل لأنه يوفر نظرة شاملة وعالية المستوى على الخطة، مع إمكانية الغوص في التفاصيل بسهولة عند الحاجة، مما يجعل استيعاب الخطة أكثر تفاعلية وجاذبية من قراءة مستند خطي. -->
+    <!-- Visualization & Content Choices: 
+        - الخطة الزمنية (3 أشهر): أزرار تفاعلية -> الهدف: التنقل بين المراحل -> التفاعل: تغيير المحتوى المعروض عند النقر -> التبرير: يوفر هيكل تنقل أساسي وواضح.
+        - الهدف الشهري: كتلة نصية واضحة -> الهدف: توفير سياق للمستخدم -> العرض: نص ثابت أعلى كل مرحلة -> التبرير: يوجه المستخدم نحو الهدف الرئيسي لكل شهر.
+        - المسارات والمهام: بطاقات وقوائم HTML -> الهدف: تنظيم وعرض التفاصيل -> العرض: عرض ديناميكي للمحتوى عبر جافاسكربت -> التبرير: تقديم المعلومات التفصيلية بطريقة منظمة وسهلة القراءة.
+        - توزيع المهام: مخطط دائري -> الهدف: مقارنة حجم العمل بين المسارات -> العرض: مخطط Canvas باستخدام Chart.js -> التبرير: يقدم ملخصاً بصرياً سريعاً لمجالات التركيز في كل شهر.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <style>
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: #F8F9FA;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .nav-btn {
+            transition: all 0.3s ease;
+        }
+        .nav-btn.active {
+            background-color: #083344;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
+        .track-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border-top-width: 4px;
+        }
+        .track-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .task-item::before {
+            content: '•';
+            color: #083344;
+            font-weight: bold;
+            display: inline-block; 
+            width: 1em;
+            margin-left: -1em;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8 md:mb-12">
+            <h1 class="text-3xl md:text-5xl font-bold text-cyan-950">خطة عمل "لبلاب" التفاعلية</h1>
+            <p class="text-lg md:text-xl text-gray-600 mt-2">نظرة شاملة على خطة الانطلاق والنمو للأشهر الثلاثة القادمة</p>
+        </header>
+
+        <nav id="plan-nav" class="flex justify-center items-center gap-2 md:gap-4 mb-8">
+            <!-- Navigation buttons will be injected here -->
+        </nav>
+
+        <main id="plan-content">
+            <!-- Plan content will be dynamically rendered here -->
+        </main>
+    </div>
+
+    <script>
+        const planData = {
+            month1: {
+                title: 'الشهر الأول',
+                goal: 'الهدف الرئيسي لهذا الشهر: بناء الأدوات والبيانات الأولية، ووضع حجر الأساس للعلامة التجارية وهوية الشركة.',
+                tracks: [
+                    {
+                        title: 'الاستراتيجية وتطوير الأعمال',
+                        icon: '🎯',
+                        color: 'border-blue-500',
+                        tasks: [
+                            'تحديد حزم الخدمات النهائية وأسعارها المبدئية.',
+                            'فهم حدود وشروط استخدام البيانات الحكومية لضمان الامتثال القانوني.',
+                            'اختيار قطاعين أو ثلاثة للتركيز عليهم في البداية.'
+                        ]
+                    },
+                    {
+                        title: 'التطوير التقني والمنتج',
+                        icon: '💻',
+                        color: 'border-green-500',
+                        tasks: [
+                            'البدء في تطوير صفحة هبوط احترافية لموقع liblab.sa.',
+                            'تطوير النسخة الأولى (v0.1) من وكلاء الذكاء الاصطناعي لجمع البيانات.',
+                            'تصميم مخطط قاعدة البيانات (Database Schema) لتخزين معلومات الشركات.'
+                        ]
+                    },
+                    {
+                        title: 'بناء قاعدة البيانات (Corpus)',
+                        icon: '🗂️',
+                        color: 'border-yellow-500',
+                        tasks: [
+                            'استكشاف البيانات العامة المتاحة كنقطة بداية.',
+                            'بدء عملية الجمع الآلي للبيانات عن القطاع المستهدف الأول.',
+                            'التركيز على ضمان جودة ودقة البيانات الأولية.'
+                        ]
+                    },
+                    {
+                        title: 'التسويق والمبيعات',
+                        icon: '📈',
+                        color: 'border-red-500',
+                        tasks: [
+                            'بناء الهوية البصرية وتصميم شعار احترافي.',
+                            'إعداد ملف تعريفي (Company Profile) للشركة.'
+                        ]
+                    }
+                ]
+            },
+            month2: {
+                title: 'الشهر الثاني',
+                goal: 'الهدف الرئيسي لهذا الشهر: إثبات فعالية الخدمة من خلال مشروع تجريبي، وتطوير الأدوات بناءً على نتائج حقيقية.',
+                tracks: [
+                    {
+                        title: 'الاستراتيجية وتطوير الأعمال',
+                        icon: '🎯',
+                        color: 'border-blue-500',
+                        tasks: [
+                            'اختيار عميل تجريبي (Pilot Client) وتقديم الخدمة له بسعر مخفض.',
+                            'تحليل النتائج الأولية من البيانات التي تم جمعها.'
+                        ]
+                    },
+                    {
+                        title: 'التطوير التقني والمنتج',
+                        icon: '�',
+                        color: 'border-green-500',
+                        tasks: [
+                            'إطلاق النسخة الأولية للموقع (MVP) لتسجيل اهتمام العملاء.',
+                            'تطوير وكلاء الذكاء الاصطناعي (v0.2) لإضافة قدرات التحقق والتنقية.',
+                            'استخدام وكلاء لتصنيف الشركات بناءً على وصفها باستخدام نماذج اللغة الكبيرة (LLM).'
+                        ]
+                    },
+                    {
+                        title: 'بناء قاعدة البيانات',
+                        icon: '🗂️',
+                        color: 'border-yellow-500',
+                        tasks: [
+                            'تنقية وإثراء بيانات القطاع الأول باستخدام الوكلاء المطورين.',
+                            'البدء في جمع بيانات القطاع المستهدف الثاني.',
+                            'تنفيذ حملة تسويقية تجريبية صغيرة للعميل التجريبي.'
+                        ]
+                    },
+                    {
+                        title: 'التسويق والمبيعات',
+                        icon: '📈',
+                        color: 'border-red-500',
+                        tasks: [
+                            'توثيق كل خطوة ونتيجة في المشروع التجريبي بدقة.',
+                            'بدء التسويق بالمحتوى عبر LinkedIn لبناء المصداقية.'
+                        ]
+                    }
+                ]
+            },
+            month3: {
+                title: 'الشهر الثالث',
+                goal: 'الهدف الرئيسي لهذا الشهر: تحويل النجاح التجريبي إلى أداة مبيعات قوية، والبدء في استقبال عملاء حقيقيين.',
+                tracks: [
+                    {
+                        title: 'الاستراتيجية وتطوير الأعمال',
+                        icon: '🎯',
+                        color: 'border-blue-500',
+                        tasks: [
+                            'بناء دراسة حالة (Case Study) قوية بالأرقام من المشروع التجريبي.',
+                            'وضع الأسعار النهائية للخدمات بناءً على القيمة المثبتة.',
+                            'البدء في عملية البيع بشكل نشط للبحث عن أول 3-5 عملاء.'
+                        ]
+                    },
+                    {
+                        title: 'التطوير التقني والمنتج',
+                        icon: '💻',
+                        color: 'border-green-500',
+                        tasks: [
+                            'إطلاق الموقع الرسمي الكامل مع صفحة "دراسات الحالة".',
+                            'تطوير لوحة تحكم داخلية (Internal Dashboard) لإدارة العمليات.'
+                        ]
+                    },
+                    {
+                        title: 'بناء قاعدة البيانات',
+                        icon: '🗂️',
+                        color: 'border-yellow-500',
+                        tasks: [
+                            'أتمتة عملية بناء البيانات (جمع -> تنقية -> إثراء).',
+                            'الاستمرار في التوسع وإضافة قطاعات جديدة لقاعدة البيانات.',
+                            'التعامل مع قاعدة البيانات كمنتج حي يتم تحديثه باستمرار.'
+                        ]
+                    },
+                    {
+                        title: 'التسويق والمبيعات',
+                        icon: '📈',
+                        color: 'border-red-500',
+                        tasks: [
+                            'إطلاق حملة تسويقية لـ "لبلاب" باستخدام دراسة الحالة.',
+                            'التركيز على بيع خدمة "بناء قواعد البيانات الذكية" كخدمة أولى.',
+                            'استخدام منتجكم لتسويق منتجكم عبر استهداف الشركات من قاعدة بياناتكم.'
+                        ]
+                    }
+                ]
+            }
+        };
+
+        let currentMonthKey = 'month1';
+        let myChart = null;
+
+        const navContainer = document.getElementById('plan-nav');
+        const contentContainer = document.getElementById('plan-content');
+
+        function renderNav() {
+            navContainer.innerHTML = '';
+            Object.keys(planData).forEach(key => {
+                const month = planData[key];
+                const button = document.createElement('button');
+                button.textContent = month.title;
+                button.className = `nav-btn font-bold py-2 px-4 md:px-6 rounded-lg shadow-sm ${currentMonthKey === key ? 'active' : 'bg-white text-cyan-950 hover:bg-cyan-50'}`;
+                button.onclick = () => {
+                    currentMonthKey = key;
+                    render();
+                };
+                navContainer.appendChild(button);
+            });
+        }
+        
+        function renderContent() {
+            const monthData = planData[currentMonthKey];
+            contentContainer.innerHTML = `
+                <div class="bg-white p-6 rounded-xl shadow-lg mb-8 text-center animate-fade-in">
+                    <h2 class="text-2xl font-bold text-cyan-950 mb-2">${monthData.title}</h2>
+                    <p class="text-gray-700">${monthData.goal}</p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                    <div class="lg:col-span-1 md:col-span-2 bg-white p-6 rounded-xl shadow-lg flex flex-col justify-center items-center">
+                         <h3 class="text-xl font-bold text-center mb-4 text-cyan-950">توزيع مهام ${monthData.title}</h3>
+                         <div class="chart-container">
+                            <canvas id="tasksChart"></canvas>
+                         </div>
+                    </div>
+                    <div class="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
+                        ${monthData.tracks.map(track => `
+                            <div class="track-card bg-white p-6 rounded-xl shadow-lg ${track.color}">
+                                <h3 class="text-xl font-bold mb-4 flex items-center">
+                                    <span class="text-2xl ml-2">${track.icon}</span>
+                                    ${track.title}
+                                </h3>
+                                <ul class="space-y-2 pr-4">
+                                    ${track.tasks.map(task => `<li class="task-item text-gray-700">${task}</li>`).join('')}
+                                </ul>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            renderChart();
+        }
+
+        function renderChart() {
+            const monthData = planData[currentMonthKey];
+            const ctx = document.getElementById('tasksChart').getContext('2d');
+            
+            const data = {
+                labels: monthData.tracks.map(t => t.title),
+                datasets: [{
+                    label: 'عدد المهام',
+                    data: monthData.tracks.map(t => t.tasks.length),
+                    backgroundColor: [
+                        'rgba(59, 130, 246, 0.7)',
+                        'rgba(16, 185, 129, 0.7)',
+                        'rgba(234, 179, 8, 0.7)',
+                        'rgba(239, 68, 68, 0.7)'
+                    ],
+                    borderColor: [
+                        'rgba(59, 130, 246, 1)',
+                        'rgba(16, 185, 129, 1)',
+                        'rgba(234, 179, 8, 1)',
+                        'rgba(239, 68, 68, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            };
+
+            const options = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                           font: {
+                               family: "'Tajawal', sans-serif",
+                               size: 14
+                           }
+                        }
+                    },
+                    tooltip: {
+                        bodyFont: {
+                            family: "'Tajawal', sans-serif",
+                        },
+                        titleFont: {
+                            family: "'Tajawal', sans-serif",
+                        }
+                    }
+                },
+                animation: {
+                    animateScale: true,
+                    animateRotate: true
+                }
+            };
+
+            if (myChart) {
+                myChart.destroy();
+            }
+
+            myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: data,
+                options: options
+            });
+        }
+
+        function render() {
+            renderNav();
+            renderContent();
+        }
+
+        document.addEventListener('DOMContentLoaded', render);
+    </script>
+
+</body>
+</html>
+�

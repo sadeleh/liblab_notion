@@ -1,0 +1,1032 @@
+{% extends "base.html" %}
+
+{% block title %}{{ notion.title }} - الملاحظات الذكية{% endblock %}
+
+{% block content %}
+<style>
+/* Enhanced responsive styles */
+@media print {
+    body * { visibility: hidden; }
+    #print-content, #print-content * { visibility: visible; }
+    #print-content {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        direction: rtl;
+        font-family: 'Noto Kufi Arabic', 'Cairo', 'Tahoma', sans-serif;
+    }
+    @page { margin: 1cm; direction: rtl; }
+}
+
+#print-content { display: none; }
+@media print { #print-content { display: block !important; } }
+
+/* Enhanced chat area */
+.chat-sidebar {
+    transition: all 0.3s ease-in-out;
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Improved responsive breakpoints */
+@media (min-width: 1280px) {
+    .desktop-layout {
+        display: grid !important;
+        grid-template-columns: 1fr 420px !important;
+        gap: 2rem;
+        min-height: calc(100vh - 200px);
+    }
+    
+    .desktop-layout .chat-sidebar {
+        display: flex !important;
+        min-height: 700px;
+        max-height: calc(100vh - 200px);
+        flex-direction: column;
+    }
+    
+    .chat-messages-container {
+        flex: 1;
+        overflow-y: auto;
+        max-height: calc(100vh - 400px);
+    }
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+    .desktop-layout {
+        display: grid !important;
+        grid-template-columns: 1fr 350px !important;
+        gap: 1.5rem;
+    }
+    
+    .desktop-layout .chat-sidebar {
+        display: flex !important;
+        min-height: 600px;
+        flex-direction: column;
+    }
+}
+
+/* Mobile optimizations */
+@media (max-width: 1023px) {
+    .desktop-layout {
+        display: block !important;
+    }
+    
+    .desktop-layout .chat-sidebar {
+        display: none !important;
+    }
+    
+    .content-area {
+        margin-bottom: 1rem;
+    }
+    
+    .mobile-chat-button {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        z-index: 40;
+        box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+}
+
+/* Chat visibility control */
+.desktop-layout .chat-sidebar.chat-hidden {
+    display: none !important;
+}
+
+.desktop-layout.chat-hidden {
+    grid-template-columns: 1fr !important;
+}
+
+/* Enhanced animations */
+.slide-in-right {
+    transform: translateX(100%);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slide-in-right.active {
+    transform: translateX(0);
+}
+
+/* Content area smooth transitions */
+#notion-content {
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* Custom scrollbar for chat */
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 3px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* Message animations */
+.message-fade-in {
+    animation: fadeInUp 0.4s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Loading animation */
+.typing-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.typing-dot {
+    width: 6px;
+    height: 6px;
+    background-color: #64748b;
+    border-radius: 50%;
+    animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing {
+    0%, 80%, 100% { opacity: 0.3; }
+    40% { opacity: 1; }
+}
+
+/* Enhanced toast animations */
+.toast-slide-in {
+    animation: slideInFromRight 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toast-slide-out {
+    animation: slideOutToRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideInFromRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutToRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* Hover states for better UX */
+.quick-action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+</style>
+
+<div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+    <!-- Enhanced Header -->
+    <div class="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 lg:p-8 mb-6 lg:mb-8 border-t-4 border-cyan-950">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-center space-x-reverse space-x-4 min-w-0 flex-1">
+                <a href="{{ url_for('smart_notion') }}" 
+                   class="text-gray-400 hover:text-cyan-600 transition-colors p-2 -m-2 rounded-lg hover:bg-gray-50">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                </a>
+                <div class="min-w-0 flex-1">
+                    <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-cyan-950 mb-1 truncate">{{ notion.title }}</h1>
+                    <p class="text-gray-600 text-xs sm:text-sm">
+                        <span class="inline-block">بواسطة: {{ notion.created_by or 'مجهول' }}</span>
+                        <span class="hidden sm:inline"> • </span>
+                        <span class="block sm:inline">تم الإنشاء: {{ notion.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+                        <span class="hidden lg:inline"> • آخر تحديث: {{ notion.updated_at.strftime('%d/%m/%Y %H:%M') }}</span>
+                    </p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-reverse space-x-2 sm:space-x-3 flex-shrink-0">
+                <!-- Desktop Chat Toggle -->
+                <button onclick="toggleChat()" 
+                        class="hidden lg:flex bg-cyan-950 text-white px-4 py-2 rounded-lg hover:bg-cyan-800 transition-all duration-200 items-center space-x-reverse space-x-2 font-medium">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                    </svg>
+                    <span id="chat-toggle-text">إخفاء الدردشة</span>
+                </button>
+                
+                <button onclick="toggleFullscreen()" 
+                        class="bg-gray-200 text-gray-700 px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+                    </svg>
+                </button>
+                
+                <button onclick="printContent()" 
+                        class="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-reverse space-x-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                    </svg>
+                    <span class="hidden sm:inline">طباعة</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Main Content Area -->
+    <div class="desktop-layout" id="main-layout">
+        <!-- Content Display Area -->
+        <div class="content-area">
+            <div class="min-h-[500px] lg:min-h-[700px]" id="content-display">
+                <div id="notion-content" class="prose prose-lg max-w-none prose-cyan arabic-content">
+                    {{ notion.content_html|safe }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Enhanced Chat Sidebar -->
+        <div class="chat-sidebar" id="chat-container">
+            <div class="bg-white rounded-xl sm:rounded-2xl shadow-lg overflow-hidden flex flex-col h-full">
+                <!-- Enhanced Chat Header -->
+                <div class="bg-gradient-to-r from-cyan-950 to-blue-900 text-white p-4 lg:p-6">
+                    <div class="flex items-center justify-between space-x-reverse space-x-3 mb-4">
+                        <div class="flex items-center space-x-reverse space-x-3">
+                            <div class="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                                <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-lg">المساعد الذكي</h3>
+                                <p class="text-cyan-100 text-sm">جاهز لمساعدتك في إنشاء المحتوى</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Model Selection -->
+                        <div class="flex items-center space-x-reverse space-x-2">
+                            <button onclick="toggleModelSelector()" class="bg-white bg-opacity-20 hover:bg-opacity-30 px-3 py-2 rounded-lg transition-all duration-200 flex items-center space-x-reverse space-x-2" id="model-selector-btn">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                                <span class="text-xs font-medium" id="selected-model-text">2.5 Flash</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Model Selection Dropdown -->
+                    <div id="model-selector-dropdown" class="hidden bg-white bg-opacity-10 rounded-lg p-3 mb-3 border border-white border-opacity-20">
+                        <p class="text-sm font-medium mb-3 text-cyan-100">اختر نموذج Gemini:</p>
+                        <div class="space-y-2">
+                            <button onclick="selectModel('models/gemini-2.5-flash', '2.5 Flash')" 
+                                    class="model-option w-full text-right px-3 py-2 rounded-md bg-white bg-opacity-10 hover:bg-opacity-20 transition-colors text-sm flex items-center justify-between"
+                                    data-model="models/gemini-2.5-flash">
+                                <div class="flex items-center space-x-reverse space-x-2">
+                                    <span class="text-cyan-100">⚡</span>
+                                    <div class="text-right">
+                                        <div class="font-medium">Gemini 2.5 Flash</div>
+                                        <div class="text-xs text-cyan-200 opacity-80">سريع ومحسّن للاستجابة الفورية</div>
+                                    </div>
+                                </div>
+                                <div class="model-check hidden">
+                                    <svg class="w-4 h-4 text-green-300" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                    </svg>
+                                </div>
+                            </button>
+                            <button onclick="selectModel('models/gemini-2.5-pro', '2.5 Pro')" 
+                                    class="model-option w-full text-right px-3 py-2 rounded-md bg-white bg-opacity-10 hover:bg-opacity-20 transition-colors text-sm flex items-center justify-between"
+                                    data-model="models/gemini-2.5-pro">
+                                <div class="flex items-center space-x-reverse space-x-2">
+                                    <span class="text-cyan-100">🚀</span>
+                                    <div class="text-right">
+                                        <div class="font-medium">Gemini 2.5 Pro</div>
+                                        <div class="text-xs text-cyan-200 opacity-80">متقدم وقوي للمهام المعقدة</div>
+                                    </div>
+                                </div>
+                                <div class="model-check hidden">
+                                    <svg class="w-4 h-4 text-green-300" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                    </svg>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Enhanced Chat Messages -->
+                <div class="chat-messages-container flex-1 p-4 lg:p-6 space-y-4 custom-scrollbar" id="chat-messages">
+                    {% for conversation in conversations %}
+                        <!-- User Message -->
+                        <div class="flex justify-end message-fade-in">
+                            <div class="bg-cyan-950 text-white p-4 rounded-2xl rounded-br-md max-w-[85%] shadow-md">
+                                <p class="text-sm leading-relaxed">{{ conversation.user_message }}</p>
+                                <span class="text-xs opacity-75 mt-2 block">{{ conversation.created_at.strftime('%H:%M') }}</span>
+                            </div>
+                        </div>
+                        
+                        <!-- AI Response -->
+                        <div class="flex justify-start message-fade-in">
+                            <div class="bg-gray-50 text-gray-800 p-4 rounded-2xl rounded-bl-md max-w-[85%] border border-gray-100 shadow-sm">
+                                <p class="text-sm leading-relaxed">{{ conversation.ai_response }}</p>
+                                <span class="text-xs text-gray-500 mt-2 block">{{ conversation.created_at.strftime('%H:%M') }}</span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Enhanced Chat Input -->
+                <div class="border-t border-gray-100 p-4 lg:p-6 bg-gray-50">
+                    <!-- Quick Actions Row -->
+                    <div class="mb-4 flex flex-wrap gap-2">
+                        <button onclick="quickAction('أضف قسم جديد')" 
+                                class="quick-action-btn text-xs bg-white hover:bg-green-50 border border-gray-200 hover:border-green-200 px-3 py-2 rounded-full transition-all duration-200 text-gray-700 hover:text-green-700">
+                            ➕ أضف قسم
+                        </button>
+                        <button onclick="quickAction('أضف جدول بيانات')" 
+                                class="quick-action-btn text-xs bg-white hover:bg-green-50 border border-gray-200 hover:border-green-200 px-3 py-2 rounded-full transition-all duration-200 text-gray-700 hover:text-green-700">
+                            📊 أضف جدول
+                        </button>
+                        <button onclick="quickAction('أضف قائمة مهام')" 
+                                class="quick-action-btn text-xs bg-white hover:bg-green-50 border border-gray-200 hover:border-green-200 px-3 py-2 rounded-full transition-all duration-200 text-gray-700 hover:text-green-700">
+                            📝 أضف قائمة
+                        </button>
+                        <button onclick="quickAction('حسّن تنسيق المحتوى الموجود')" 
+                                class="quick-action-btn text-xs bg-white hover:bg-cyan-50 border border-gray-200 hover:border-cyan-200 px-3 py-2 rounded-full transition-all duration-200 text-gray-700 hover:text-cyan-700">
+                            ✨ حسّن التنسيق
+                        </button>
+                    </div>
+                    
+                    <!-- Input Area -->
+                    <div class="flex space-x-reverse space-x-3">
+                        <div class="flex-1 relative">
+                            <textarea 
+                                id="chat-input" 
+                                placeholder="اكتب رسالتك هنا... (Shift+Enter للسطر الجديد)"
+                                class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none transition-all duration-200 bg-white"
+                                rows="2"
+                                onkeypress="handleKeyPress(event)"
+                                oninput="autoResize(this)"
+                            ></textarea>
+                        </div>
+                        <button 
+                            onclick="sendMessage()" 
+                            id="send-button"
+                            class="bg-cyan-950 text-white px-4 py-3 rounded-xl hover:bg-cyan-800 transition-all duration-200 disabled:bg-gray-400 self-end"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Mobile Chat Button -->
+    <button onclick="toggleChat()" 
+            class="mobile-chat-button lg:hidden bg-cyan-950 text-white w-14 h-14 rounded-full flex items-center justify-center hover:bg-cyan-800 transition-all duration-200">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+        </svg>
+    </button>
+
+    <!-- Enhanced Mobile Chat Modal -->
+    <div id="mobile-chat-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden lg:hidden">
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl max-h-[80vh] slide-in-right">
+            <!-- Mobile Chat Header -->
+            <div class="bg-gradient-to-r from-cyan-950 to-blue-900 text-white p-4 rounded-t-2xl flex justify-between items-center">
+                <div class="flex items-center space-x-reverse space-x-3">
+                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="font-bold">المساعد الذكي</h3>
+                </div>
+                <button onclick="toggleChat()" class="text-white hover:text-gray-200 p-2 -m-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Mobile Chat Content -->
+            <div class="flex flex-col max-h-[calc(80vh-140px)]">
+                <div class="flex-1 p-4 space-y-3 overflow-y-auto custom-scrollbar" id="mobile-chat-messages">
+                    <!-- Messages will be populated from desktop version -->
+                </div>
+                
+                <!-- Mobile Chat Input -->
+                <div class="border-t border-gray-200 p-4 bg-gray-50">
+                    <div class="flex space-x-reverse space-x-2 mb-3">
+                        <textarea 
+                            id="mobile-chat-input" 
+                            placeholder="اكتب رسالتك هنا..."
+                            class="flex-1 px-3 py-2 border border-gray-300 rounded-lg resize-none"
+                            rows="2"
+                            onkeypress="handleMobileKeyPress(event)"
+                        ></textarea>
+                        <button onclick="sendMobileMessage()" 
+                                class="bg-cyan-950 text-white px-4 py-2 rounded-lg self-end">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <!-- Mobile Quick Actions -->
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="quickAction('إضافة قسم جديد'); closeMobileChat();" class="text-xs bg-white border border-gray-200 px-3 py-2 rounded-full hover:bg-gray-50 transition-colors">
+                            📝 إضافة قسم
+                        </button>
+                        <button onclick="quickAction('تحسين التنسيق'); closeMobileChat();" class="text-xs bg-white border border-gray-200 px-3 py-2 rounded-full hover:bg-gray-50 transition-colors">
+                            ✨ تحسين
+                        </button>
+                        <button onclick="quickAction('إضافة جدول'); closeMobileChat();" class="text-xs bg-white border border-gray-200 px-3 py-2 rounded-full hover:bg-gray-50 transition-colors">
+                            📊 جدول
+                        </button>
+                        <button onclick="quickAction('تلخيص المحتوى'); closeMobileChat();" class="text-xs bg-white border border-gray-200 px-3 py-2 rounded-full hover:bg-gray-50 transition-colors">
+                            📋 تلخيص
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden print content -->
+<div id="print-content">
+    <div style="text-align: center; margin-bottom: 2cm;">
+        <h1 style="font-size: 24px; font-weight: bold; color: #083344; margin-bottom: 10px;">{{ notion.title }}</h1>
+        <p style="color: #666; font-size: 14px;">
+            بواسطة: {{ notion.created_by or 'مجهول' }} • 
+            تم الإنشاء: {{ notion.created_at.strftime('%d/%m/%Y %H:%M') }} • 
+            آخر تحديث: {{ notion.updated_at.strftime('%d/%m/%Y %H:%M') }}
+        </p>
+        <hr style="margin: 20px 0; border: 1px solid #083344;">
+    </div>
+    <div id="print-notion-content">
+        {{ notion.content_html|safe }}
+    </div>
+</div>
+
+<script>
+let isChatVisible = window.innerWidth >= 1024; // Show by default on desktop
+let isFullscreen = false;
+let selectedModel = 'models/gemini-2.5-flash'; // Default model
+
+function toggleChat() {
+    const chatContainer = document.getElementById('chat-container');
+    const mobileModal = document.getElementById('mobile-chat-modal');
+    const toggleText = document.getElementById('chat-toggle-text');
+    const mainLayout = document.getElementById('main-layout');
+    
+    if (window.innerWidth >= 1024) {
+        // Desktop behavior
+        isChatVisible = !isChatVisible;
+        if (isChatVisible) {
+            chatContainer.classList.remove('chat-hidden');
+            mainLayout.classList.remove('chat-hidden');
+        } else {
+            chatContainer.classList.add('chat-hidden');
+            mainLayout.classList.add('chat-hidden');
+        }
+        toggleText.textContent = isChatVisible ? 'إخفاء الدردشة' : 'إظهار الدردشة';
+        
+        // Auto-focus input when opening
+        if (isChatVisible) {
+            setTimeout(() => {
+                const chatInput = document.getElementById('chat-input');
+                if (chatInput) {
+                    chatInput.focus();
+                }
+            }, 200);
+        }
+    } else {
+        // Mobile behavior
+        const isHidden = mobileModal.classList.contains('hidden');
+        mobileModal.classList.toggle('hidden');
+        
+        if (!isHidden) {
+            // Closing
+            const modalContent = mobileModal.querySelector('.slide-in-right');
+            modalContent.classList.remove('active');
+        } else {
+            // Opening
+            syncMobileChatMessages();
+            setTimeout(() => {
+                const modalContent = mobileModal.querySelector('.slide-in-right');
+                modalContent.classList.add('active');
+            }, 10);
+        }
+    }
+}
+
+function closeMobileChat() {
+    const mobileModal = document.getElementById('mobile-chat-modal');
+    const modalContent = mobileModal.querySelector('.slide-in-right');
+    modalContent.classList.remove('active');
+    setTimeout(() => {
+        mobileModal.classList.add('hidden');
+    }, 400);
+}
+
+function syncMobileChatMessages() {
+    const desktopMessages = document.getElementById('chat-messages').innerHTML;
+    document.getElementById('mobile-chat-messages').innerHTML = desktopMessages;
+}
+
+function toggleFullscreen() {
+    const mainLayout = document.getElementById('main-layout');
+    const chatContainer = document.getElementById('chat-container');
+    
+    isFullscreen = !isFullscreen;
+    
+    if (isFullscreen) {
+        // Go fullscreen
+        chatContainer.classList.add('chat-hidden');
+        mainLayout.classList.add('chat-hidden');
+    } else {
+        // Exit fullscreen
+        if (isChatVisible && window.innerWidth >= 1024) {
+            chatContainer.classList.remove('chat-hidden');
+            mainLayout.classList.remove('chat-hidden');
+        }
+    }
+}
+
+
+
+function handleKeyPress(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+    }
+}
+
+function handleMobileKeyPress(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMobileMessage();
+    }
+}
+
+function autoResize(textarea) {
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+}
+
+function quickAction(action) {
+    const desktopInput = document.getElementById('chat-input');
+    const mobileInput = document.getElementById('mobile-chat-input');
+    
+    desktopInput.value = action;
+    mobileInput.value = action;
+    
+    // Auto-resize desktop textarea
+    autoResize(desktopInput);
+    
+    // Focus appropriate input
+    if (window.innerWidth >= 1024) {
+        desktopInput.focus();
+    } else {
+        mobileInput.focus();
+    }
+}
+
+async function sendMessage() {
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    // Disable send button and show loading
+    const sendButton = document.getElementById('send-button');
+    sendButton.disabled = true;
+    sendButton.innerHTML = '<div class="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>';
+    
+    // Add user message to chat
+    addMessageToChat(message, 'user');
+    
+    // Clear input and reset height
+    input.value = '';
+    input.style.height = 'auto';
+    
+    // Add typing indicator
+    const typingIndicator = addTypingIndicator();
+    
+    try {
+        const response = await fetch(`/api/smart_notion/{{ notion.id }}/chat`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                message: message,
+                model: selectedModel 
+            })
+        });
+        
+        const data = await response.json();
+        
+        // Remove typing indicator
+        removeTypingIndicator(typingIndicator);
+        
+        if (data.success) {
+            // Add AI response to chat
+            addMessageToChat(data.ai_response, 'ai');
+            
+            // Update content display with animation
+            const contentElement = document.getElementById('notion-content');
+            contentElement.style.opacity = '0.7';
+            contentElement.innerHTML = data.updated_content;
+            setTimeout(() => {
+                contentElement.style.opacity = '1';
+            }, 200);
+            
+            // Update print content as well
+            document.getElementById('print-notion-content').innerHTML = data.updated_content;
+            
+            // Show success toast with model info
+            const modelName = data.model_used === 'models/gemini-2.5-flash' ? 'Flash ⚡' : 'Pro 🚀';
+            showToast(`تم تحديث المحتوى بنجاح ✨ (${modelName})`, 'success');
+        } else {
+            addMessageToChat('حدث خطأ في معالجة طلبك. يرجى المحاولة مرة أخرى.', 'ai');
+            showToast('حدث خطأ في معالجة الطلب', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        removeTypingIndicator(typingIndicator);
+        addMessageToChat('حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.', 'ai');
+        showToast('حدث خطأ في الاتصال', 'error');
+    } finally {
+        // Re-enable send button
+        sendButton.disabled = false;
+        sendButton.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>';
+    }
+}
+
+async function sendMobileMessage() {
+    const input = document.getElementById('mobile-chat-input');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    // Clear mobile input
+    input.value = '';
+    
+    // Close mobile modal after sending
+    closeMobileChat();
+    
+    // Add user message to chat
+    addMessageToChat(message, 'user');
+    
+    // Add typing indicator
+    const typingIndicator = addTypingIndicator();
+    
+    try {
+        const response = await fetch(`/api/smart_notion/{{ notion.id }}/chat`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                message: message,
+                model: selectedModel 
+            })
+        });
+        
+        const data = await response.json();
+        
+        // Remove typing indicator
+        removeTypingIndicator(typingIndicator);
+        
+        if (data.success) {
+            // Add AI response to chat
+            addMessageToChat(data.ai_response, 'ai');
+            
+            // Update content display with animation
+            const contentElement = document.getElementById('notion-content');
+            contentElement.style.opacity = '0.7';
+            contentElement.innerHTML = data.updated_content;
+            setTimeout(() => {
+                contentElement.style.opacity = '1';
+            }, 200);
+            
+                         // Update print content as well
+             document.getElementById('print-notion-content').innerHTML = data.updated_content;
+             
+             // Show success toast with model info
+             const modelName = data.model_used === 'models/gemini-2.5-flash' ? 'Flash ⚡' : 'Pro 🚀';
+             showToast(`تم تحديث المحتوى بنجاح ✨ (${modelName})`, 'success');
+         } else {
+             addMessageToChat('حدث خطأ في معالجة طلبك. يرجى المحاولة مرة أخرى.', 'ai');
+             showToast('حدث خطأ في معالجة الطلب', 'error');
+         }
+     } catch (error) {
+        console.error('Error:', error);
+        removeTypingIndicator(typingIndicator);
+        addMessageToChat('حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.', 'ai');
+        showToast('حدث خطأ في الاتصال', 'error');
+    }
+}
+
+function addMessageToChat(message, sender) {
+    const chatMessages = document.getElementById('chat-messages');
+    const time = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `${sender === 'user' ? 'flex justify-end' : 'flex justify-start'} message-fade-in`;
+    
+    const messageContent = document.createElement('div');
+    messageContent.className = sender === 'user' 
+        ? 'bg-cyan-950 text-white p-4 rounded-2xl rounded-br-md max-w-[85%] shadow-md' 
+        : 'bg-gray-50 text-gray-800 p-4 rounded-2xl rounded-bl-md max-w-[85%] border border-gray-100 shadow-sm';
+        
+    messageContent.innerHTML = `
+        <p class="text-sm leading-relaxed">${message}</p>
+        <span class="text-xs ${sender === 'user' ? 'opacity-75' : 'text-gray-500'} mt-2 block">${time}</span>
+    `;
+    
+    messageDiv.appendChild(messageContent);
+    chatMessages.appendChild(messageDiv);
+    
+    // Smooth scroll to bottom
+    chatMessages.scrollTo({
+        top: chatMessages.scrollHeight,
+        behavior: 'smooth'
+    });
+    
+    // Sync with mobile
+    syncMobileChatMessages();
+}
+
+function addTypingIndicator() {
+    const chatMessages = document.getElementById('chat-messages');
+    
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'flex justify-start message-fade-in typing-indicator-container';
+    typingDiv.innerHTML = `
+        <div class="bg-gray-50 text-gray-800 p-4 rounded-2xl rounded-bl-md border border-gray-100 shadow-sm">
+            <div class="typing-indicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        </div>
+    `;
+    
+    chatMessages.appendChild(typingDiv);
+    
+    // Smooth scroll to bottom
+    chatMessages.scrollTo({
+        top: chatMessages.scrollHeight,
+        behavior: 'smooth'
+    });
+    
+    return typingDiv;
+}
+
+function removeTypingIndicator(indicator) {
+    if (indicator && indicator.parentNode) {
+        indicator.parentNode.removeChild(indicator);
+    }
+}
+
+// Enhanced initialization
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleText = document.getElementById('chat-toggle-text');
+    const chatContainer = document.getElementById('chat-container');
+    const mainLayout = document.getElementById('main-layout');
+    
+    // Initialize layout - handled by CSS grid
+    
+    if (window.innerWidth >= 1024) {
+        // Desktop: show chat by default
+        chatContainer.classList.remove('chat-hidden');
+        mainLayout.classList.remove('chat-hidden');
+        toggleText.textContent = 'إخفاء الدردشة';
+        isChatVisible = true;
+        
+        // Add welcome message for new notions
+        const existingMessages = document.querySelectorAll('#chat-messages .message-fade-in');
+        if (existingMessages.length === 0) {
+            addWelcomeMessage();
+        }
+        
+        // Auto-focus chat input on desktop
+        setTimeout(() => {
+            const chatInput = document.getElementById('chat-input');
+            if (chatInput) {
+                chatInput.focus();
+            }
+        }, 500);
+    } else {
+        // Mobile: hide chat initially
+        chatContainer.classList.add('chat-hidden');
+        toggleText.textContent = 'إظهار الدردشة';
+        isChatVisible = false;
+    }
+    
+    // Enhanced smooth transitions
+    document.documentElement.style.scrollBehavior = 'smooth';
+});
+
+function addWelcomeMessage() {
+    const chatMessages = document.getElementById('chat-messages');
+    const welcomeDiv = document.createElement('div');
+    welcomeDiv.className = 'flex justify-start message-fade-in';
+    welcomeDiv.innerHTML = `
+        <div class="bg-gradient-to-r from-cyan-50 to-blue-50 text-cyan-900 p-4 rounded-2xl rounded-bl-md max-w-[85%] border border-cyan-200 shadow-sm">
+            <div class="flex items-center space-x-reverse space-x-2 mb-3">
+                <div class="w-8 h-8 bg-cyan-100 rounded-full flex items-center justify-center">
+                    <svg class="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                    </svg>
+                </div>
+                <span class="font-bold text-cyan-800">المساعد الذكي</span>
+            </div>
+            <p class="text-sm mb-3 leading-relaxed">مرحباً! أنا هنا لمساعدتك في إنشاء وتحسين محتوى ملاحظتك.</p>
+            <div class="bg-green-100 p-3 rounded-lg mb-3 border border-green-200">
+                <p class="text-xs font-medium text-green-800 mb-2">✅ سلوك جديد محسّن:</p>
+                <p class="text-xs text-green-700 mb-2">سأحافظ على محتواك الموجود وأضيف إليه المحتوى الجديد، ما لم تطلب مني صراحة استبداله أو حذفه.</p>
+            </div>
+            <div class="bg-cyan-100 p-3 rounded-lg mb-3">
+                <p class="text-xs font-medium text-cyan-800 mb-2">💡 اقتراحات سريعة:</p>
+                <ul class="text-xs text-cyan-700 space-y-1">
+                    <li>• "أضف جدول للبيانات" ← يضيف جدول جديد</li>
+                    <li>• "أنشئ قائمة مهام" ← يضيف قائمة جديدة</li>
+                    <li>• "اكتب فقرة عن..." ← يضيف فقرة جديدة</li>
+                    <li>• "استبدل كل المحتوى بـ..." ← يستبدل كل شيء</li>
+                </ul>
+            </div>
+            <span class="text-xs text-cyan-600">${new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</span>
+        </div>
+    `;
+    chatMessages.appendChild(welcomeDiv);
+}
+
+// Enhanced window resize handler
+let resizeTimeout;
+window.addEventListener('resize', function() {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        const chatContainer = document.getElementById('chat-container');
+        const toggleText = document.getElementById('chat-toggle-text');
+        const mobileModal = document.getElementById('mobile-chat-modal');
+        const mainLayout = document.getElementById('main-layout');
+        
+        if (window.innerWidth >= 1024) {
+            // Switching to desktop
+            chatContainer.classList.remove('chat-hidden');
+            mainLayout.classList.remove('chat-hidden');
+            mobileModal.classList.add('hidden');
+            toggleText.textContent = 'إخفاء الدردشة';
+            isChatVisible = true;
+        } else {
+            // Switching to mobile
+            chatContainer.classList.add('chat-hidden');
+            toggleText.textContent = 'إظهار الدردشة';
+            isChatVisible = false;
+        }
+    }, 100);
+});
+
+// Print functionality
+function printContent() {
+    // Sync the print content with current content
+    const currentContent = document.getElementById('notion-content').innerHTML;
+    document.getElementById('print-notion-content').innerHTML = currentContent;
+    
+    // Show success message
+    showToast('جاري تحضير المحتوى للطباعة...', 'info');
+    
+    // Small delay to allow toast to show
+    setTimeout(() => {
+        window.print();
+    }, 500);
+}
+
+function showToast(message, type = 'info') {
+    // Create toast element with enhanced styling
+    const toast = document.createElement('div');
+    const bgColor = type === 'success' ? 'bg-green-500' : 
+                   type === 'error' ? 'bg-red-500' : 'bg-blue-500';
+    
+    const icon = type === 'success' ? '✅' : 
+                type === 'error' ? '❌' : 'ℹ️';
+    
+    toast.className = `fixed top-6 right-6 z-50 px-6 py-4 rounded-xl shadow-2xl text-white font-medium ${bgColor} toast-slide-in max-w-sm`;
+    
+    toast.innerHTML = `
+        <div class="flex items-center space-x-reverse space-x-3">
+            <span class="text-lg">${icon}</span>
+            <span class="flex-1">${message}</span>
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Auto-remove with animation
+    setTimeout(() => {
+        toast.classList.remove('toast-slide-in');
+        toast.classList.add('toast-slide-out');
+        
+        setTimeout(() => {
+            if (toast.parentNode) {
+                document.body.removeChild(toast);
+            }
+        }, 300);
+    }, 3500);
+    
+    // Click to dismiss
+    toast.addEventListener('click', () => {
+        toast.classList.remove('toast-slide-in');
+        toast.classList.add('toast-slide-out');
+        
+        setTimeout(() => {
+            if (toast.parentNode) {
+                document.body.removeChild(toast);
+            }
+        }, 300);
+    });
+}
+
+// Model Selection Functions
+function toggleModelSelector() {
+    const dropdown = document.getElementById('model-selector-dropdown');
+    dropdown.classList.toggle('hidden');
+}
+
+function selectModel(modelName, displayName) {
+    selectedModel = modelName;
+    document.getElementById('selected-model-text').textContent = displayName;
+    
+    // Update visual selection
+    document.querySelectorAll('.model-option').forEach(option => {
+        const check = option.querySelector('.model-check');
+        if (option.dataset.model === modelName) {
+            check.classList.remove('hidden');
+            option.classList.add('ring-2', 'ring-green-300');
+        } else {
+            check.classList.add('hidden');
+            option.classList.remove('ring-2', 'ring-green-300');
+        }
+    });
+    
+    // Hide dropdown
+    document.getElementById('model-selector-dropdown').classList.add('hidden');
+    
+    // Show toast notification  
+    const modelDisplayNames = {
+        'models/gemini-2.5-flash': 'Gemini 2.5 Flash ⚡',
+        'models/gemini-2.5-pro': 'Gemini 2.5 Pro 🚀'
+    };
+    
+    showToast(`تم تحديد النموذج: ${modelDisplayNames[modelName]}`, 'success');
+    
+    // Store in localStorage for persistence
+    localStorage.setItem('selectedGeminiModel', modelName);
+    localStorage.setItem('selectedGeminiModelDisplay', displayName);
+}
+
+// Initialize model selection from localStorage
+document.addEventListener('DOMContentLoaded', function() {
+    const savedModel = localStorage.getItem('selectedGeminiModel');
+    const savedDisplayName = localStorage.getItem('selectedGeminiModelDisplay');
+    
+    if (savedModel && savedDisplayName) {
+        selectModel(savedModel, savedDisplayName);
+    } else {
+        // Set default selection
+        selectModel('models/gemini-2.5-flash', '2.5 Flash');
+    }
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+        const dropdown = document.getElementById('model-selector-dropdown');
+        const button = document.getElementById('model-selector-btn');
+        
+        if (!dropdown.contains(event.target) && !button.contains(event.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}{{ session.title }} - جلسة العصف الذهني{% endblock %}
+
+{% block content %}
+<header class="text-center mb-8">
+    <h1 class="text-2xl md:text-4xl font-bold text-cyan-950">{{ session.title }}</h1>
+    <p class="text-lg text-gray-600 mt-2">{{ session.description }}</p>
+    <div class="mt-3 text-sm text-gray-500">
+        أنشأها {{ session.created_by or 'مجهول' }} في {{ session.created_at.strftime('%Y-%m-%d') }}
+    </div>
+</header>
+
+<!-- Add Idea Form -->
+<div class="bg-white p-6 rounded-xl shadow-lg mb-8">
+    <h3 class="text-xl font-bold text-cyan-950 mb-4">
+        <span class="text-2xl ml-2">💡</span>أضف فكرتك
+    </h3>
+    <form method="POST" action="{{ url_for('add_idea', session_id=session.id) }}" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="md:col-span-2">
+                <textarea name="content" 
+                         placeholder="شارك فكرتك هنا..." 
+                         required
+                         rows="3"
+                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"></textarea>
+            </div>
+            <div>
+                <input type="text" 
+                       name="author" 
+                       placeholder="اسمك"
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent">
+            </div>
+            <div>
+                <button type="submit" 
+                        class="w-full bg-cyan-950 text-white font-bold py-3 px-4 rounded-lg hover:bg-cyan-800">
+                    <span class="text-xl ml-2">➕</span>إضافة فكرة
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Ideas Display -->
+<div class="mb-6">
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-bold text-cyan-950">
+            <span class="text-2xl ml-2">🌟</span>الأفكار ({{ ideas|length }})
+        </h3>
+        <a href="{{ url_for('brainstorm') }}" class="text-cyan-950 hover:text-cyan-700 font-medium">
+            ← العودة للجلسات
+        </a>
+    </div>
+</div>
+
+{% if ideas %}
+    <!-- Ideas Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for idea in ideas %}
+            <div class="card bg-white p-6 rounded-xl shadow-lg border-cyan-500 idea-card" data-idea-id="{{ idea.id }}">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex-1 pr-4">
+                        <p class="text-gray-900 leading-relaxed">{{ idea.content }}</p>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <button onclick="voteIdea({{ idea.id }})" 
+                                class="vote-btn bg-cyan-100 hover:bg-cyan-200 text-cyan-800 rounded-full w-10 h-10 flex items-center justify-center mb-1 transition-colors">
+                            👍
+                        </button>
+                        <span class="votes-count text-sm font-bold text-cyan-950">{{ idea.votes }}</span>
+                    </div>
+                </div>
+                
+                <div class="flex justify-between items-center text-sm text-gray-500 mt-4 pt-3 border-t border-gray-200">
+                    <span>{{ idea.author or 'مجهول' }}</span>
+                    <span>{{ idea.created_at.strftime('%m/%d %H:%M') }}</span>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Top Ideas Summary -->
+    {% if ideas|length > 3 %}
+        <div class="mt-12 bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+            <h3 class="font-bold text-yellow-950 mb-4">🏆 الأفكار الأكثر تصويتاً</h3>
+            <div class="space-y-3">
+                {% for idea in ideas[:3] %}
+                    <div class="flex items-center justify-between bg-white p-3 rounded-lg">
+                        <div class="flex-1">
+                            <p class="text-gray-900">{{ idea.content[:80] }}{{ '...' if idea.content|length > 80 else '' }}</p>
+                            <p class="text-sm text-gray-500">بواسطة {{ idea.author or 'مجهول' }}</p>
+                        </div>
+                        <div class="flex items-center space-x-2 space-x-reverse">
+                            <span class="text-2xl">👍</span>
+                            <span class="font-bold text-yellow-950">{{ idea.votes }}</span>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+    
+{% else %}
+    <div class="text-center py-12">
+        <div class="text-6xl mb-4">💡</div>
+        <h3 class="text-xl font-bold text-gray-900 mb-2">لا توجد أفكار بعد</h3>
+        <p class="text-gray-600 mb-6">كن أول من يشارك فكرة في هذه الجلسة!</p>
+    </div>
+{% endif %}
+
+<!-- Session Guidelines -->
+<div class="mt-12 bg-blue-50 border border-blue-200 rounded-lg p-6">
+    <h3 class="font-bold text-blue-950 mb-3">📋 إرشادات الجلسة</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-blue-800">
+        <ul class="space-y-2">
+            <li>• جميع الأفكار مرحب بها - لا انتقاد</li>
+            <li>• ابن على أفكار الآخرين عندما يكون ذلك ممكناً</li>
+            <li>• صوت للأفكار التي تجدها واعدة</li>
+        </ul>
+        <ul class="space-y-2">
+            <li>• كن محدداً وقابل للتنفيذ عندما يكون ذلك ممكناً</li>
+            <li>• فكرة واحدة في كل مشاركة</li>
+            <li>• اطرح أسئلة لتوضيح الأفكار</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    function voteIdea(ideaId) {
+        fetch(`/api/vote_idea/${ideaId}`)
+            .then(response => response.json())
+            .then(data => {
+                // Update the vote count for this idea
+                const ideaCard = document.querySelector(`[data-idea-id="${ideaId}"]`);
+                const votesCount = ideaCard.querySelector('.votes-count');
+                votesCount.textContent = data.votes;
+                
+                // Visual feedback
+                const voteBtn = ideaCard.querySelector('.vote-btn');
+                voteBtn.style.transform = 'scale(1.2)';
+                voteBtn.style.backgroundColor = '#10b981';
+                setTimeout(() => {
+                    voteBtn.style.transform = 'scale(1)';
+                    voteBtn.style.backgroundColor = '';
+                }, 300);
+            })
+            .catch(error => {
+                console.error('Error voting:', error);
+                // Simple fallback - reload page
+                location.reload();
+            });
+    }
+    
+    // Auto-refresh ideas every 30 seconds for real-time collaboration
+    setInterval(() => {
+        // In a real app, you'd fetch just the ideas data via API
+        // For now, we'll just show a subtle indicator that the session is live
+        const title = document.querySelector('h1');
+        title.style.opacity = '0.8';
+        setTimeout(() => {
+            title.style.opacity = '1';
+        }, 200);
+    }, 30000);
+</script>
+
+<style>
+    .idea-card {
+        transition: all 0.3s ease;
+    }
+    .idea-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px -8px rgba(0, 0, 0, 0.15);
+    }
+    .vote-btn {
+        transition: all 0.2s ease;
+    }
+    .vote-btn:hover {
+        transform: scale(1.1);
+    }
+</style>
+{% endblock %} 

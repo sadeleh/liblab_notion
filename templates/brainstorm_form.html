@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}جلسة عصف ذهني جديدة - مركز تخطيط الفريق{% endblock %}
+
+{% block content %}
+<header class="text-center mb-8">
+    <h1 class="text-3xl md:text-4xl font-bold text-cyan-950">إنشاء جلسة عصف ذهني</h1>
+    <p class="text-lg text-gray-600 mt-2">ابدأ جلسة تفكير تعاونية جديدة</p>
+</header>
+
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white p-8 rounded-xl shadow-lg">
+        <form method="POST" class="space-y-6">
+            <!-- Title -->
+            <div>
+                <label for="title" class="block text-sm font-medium text-gray-700 mb-2">
+                    عنوان الجلسة <span class="text-red-500">*</span>
+                </label>
+                <input type="text" 
+                       id="title" 
+                       name="title" 
+                       required
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                       placeholder="مثال: أفكار ميزات المنتج للربع الثاني">
+            </div>
+
+            <!-- Description -->
+            <div>
+                <label for="description" class="block text-sm font-medium text-gray-700 mb-2">
+                    وصف الجلسة <span class="text-red-500">*</span>
+                </label>
+                <textarea id="description" 
+                         name="description" 
+                         rows="4"
+                         required
+                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                         placeholder="صف هدف جلسة العصف الذهني هذه. ما المشكلة التي تحاول حلها أو ما الأفكار التي تبحث عنها؟"></textarea>
+            </div>
+
+            <!-- Created By -->
+            <div>
+                <label for="created_by" class="block text-sm font-medium text-gray-700 mb-2">
+                    اسمك
+                </label>
+                <input type="text" 
+                       id="created_by" 
+                       name="created_by"
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                       placeholder="اسمك">
+            </div>
+
+            <!-- Form Actions -->
+            <div class="flex space-x-4 space-x-reverse pt-6">
+                <button type="submit" 
+                        class="flex-1 bg-cyan-950 text-white font-bold py-3 px-6 rounded-lg hover:bg-cyan-800 transition-colors">
+                    <span class="text-xl ml-2">🧠</span>إنشاء الجلسة
+                </button>
+                <a href="{{ url_for('brainstorm') }}" 
+                   class="flex-1 text-center bg-gray-200 text-gray-700 font-bold py-3 px-6 rounded-lg hover:bg-gray-300 transition-colors">
+                    إلغاء
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Quick Tips -->
+    <div class="mt-8 bg-orange-50 border border-orange-200 rounded-lg p-6">
+        <h3 class="font-bold text-orange-950 mb-3">🎯 نصائح إعداد الجلسة</h3>
+        <ul class="space-y-2 text-orange-800">
+            <li>• <strong>كن محدداً:</strong> الأهداف الواضحة تؤدي إلى أفكار أفضل</li>
+            <li>• <strong>حدد السياق:</strong> اشرح المشكلة أو الفرصة</li>
+            <li>• <strong>أدرج القيود:</strong> الميزانية أو الجدول الزمني أو القيود التقنية</li>
+            <li>• <strong>شجع المشاركة:</strong> ادع جميع أعضاء الفريق ذوي الصلة</li>
+        </ul>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}مركز تخطيط الفريق{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: "Noto Kufi Arabic", 'Inter', sans-serif;
+            font-optical-sizing: auto;
+            font-weight: 400;
+            font-style: normal;
+            background-color: #F8F9FA;
+        }
+        .noto-kufi-arabic {
+            font-family: "Noto Kufi Arabic", sans-serif;
+            font-optical-sizing: auto;
+            font-weight: 400;
+            font-style: normal;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .nav-btn {
+            transition: all 0.3s ease;
+        }
+        .nav-btn.active {
+            background-color: #083344;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
+        .card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border-top-width: 4px;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .status-pending { border-top-color: #f59e0b; }
+        .status-in_progress { border-top-color: #3b82f6; }
+        .status-completed { border-top-color: #10b981; }
+        .priority-high { border-left: 4px solid #ef4444; }
+        .priority-medium { border-left: 4px solid #f59e0b; }
+        .priority-low { border-left: 4px solid #10b981; }
+        .flash-message {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        /* Arabic content styling utilities */
+        .arabic-content {
+            font-family: "Noto Kufi Arabic", "Cairo", "Tahoma", sans-serif !important;
+            direction: rtl !important;
+            text-align: right !important;
+            line-height: 1.8 !important;
+        }
+        
+        .arabic-content h1,
+        .arabic-content h2,
+        .arabic-content h3,
+        .arabic-content h4,
+        .arabic-content h5,
+        .arabic-content h6 {
+            font-family: "Noto Kufi Arabic", "Cairo", "Tahoma", sans-serif !important;
+            direction: rtl !important;
+            text-align: right !important;
+            font-weight: 700 !important;
+        }
+        
+        .arabic-content p,
+        .arabic-content li,
+        .arabic-content td,
+        .arabic-content th {
+            font-family: "Noto Kufi Arabic", "Cairo", "Tahoma", sans-serif !important;
+            direction: rtl !important;
+            text-align: right !important;
+        }
+        
+        .arabic-content ul,
+        .arabic-content ol {
+            direction: rtl !important;
+            text-align: right !important;
+        }
+        
+        .arabic-content table {
+            direction: rtl !important;
+        }
+        
+        /* Force RTL for generated content */
+        #notion-content,
+        #notion-content *,
+        .prose,
+        .prose * {
+            font-family: "Noto Kufi Arabic", "Cairo", "Tahoma", sans-serif !important;
+            direction: rtl !important;
+            text-align: right !important;
+        }
+        
+        .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+            text-align: right !important;
+            direction: rtl !important;
+        }
+        
+        .prose ul, .prose ol {
+            text-align: right !important;
+            direction: rtl !important;
+        }
+        
+        .prose li {
+            text-align: right !important;
+            direction: rtl !important;
+        }
+        
+        /* English content styling utilities */
+        .english-content {
+            font-family: "Inter", sans-serif !important;
+            direction: ltr !important;
+            text-align: left !important;
+            line-height: 1.6 !important;
+        }
+        
+        .english-content h1,
+        .english-content h2,
+        .english-content h3,
+        .english-content h4,
+        .english-content h5,
+        .english-content h6 {
+            font-family: "Inter", sans-serif !important;
+            direction: ltr !important;
+            text-align: left !important;
+            font-weight: 600 !important;
+        }
+        
+        .english-content p,
+        .english-content li,
+        .english-content td,
+        .english-content th {
+            font-family: "Inter", sans-serif !important;
+            direction: ltr !important;
+            text-align: left !important;
+        }
+        
+        .english-content ul,
+        .english-content ol {
+            direction: ltr !important;
+            text-align: left !important;
+        }
+        
+        /* Mixed content support */
+        .mixed-content .arabic-text {
+            font-family: "Noto Kufi Arabic", "Cairo", "Tahoma", sans-serif !important;
+            direction: rtl !important;
+            text-align: right !important;
+        }
+        
+        .mixed-content .english-text {
+            font-family: "Inter", sans-serif !important;
+            direction: ltr !important;
+            text-align: left !important;
+        }
+        
+        /* User preference overrides - highest priority */
+        .user-font-override {
+            font-family: var(--user-font) !important;
+        }
+        
+        .user-direction-override {
+            direction: var(--user-direction) !important;
+            text-align: var(--user-align) !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg border-b-4 border-cyan-950">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4 space-x-reverse">
+                    <h1 class="text-2xl font-bold text-cyan-950">مركز الفريق</h1>
+                </div>
+                <div class="hidden md:flex space-x-6 space-x-reverse">
+                    <a href="{{ url_for('index') }}" class="nav-link {{ 'active' if request.endpoint == 'index' else '' }}">
+                        <span class="text-xl ml-2">🏠</span>لوحة التحكم
+                    </a>
+                    <a href="{{ url_for('tasks') }}" class="nav-link {{ 'active' if 'task' in request.endpoint else '' }}">
+                        <span class="text-xl ml-2">✅</span>المهام
+                    </a>
+                    <a href="{{ url_for('resources') }}" class="nav-link {{ 'active' if 'resource' in request.endpoint else '' }}">
+                        <span class="text-xl ml-2">📚</span>الموارد
+                    </a>
+                    <a href="{{ url_for('brainstorm') }}" class="nav-link {{ 'active' if 'brainstorm' in request.endpoint else '' }}">
+                        <span class="text-xl ml-2">💡</span>العصف الذهني
+                    </a>
+                    <a href="{{ url_for('smart_notion') }}" class="nav-link {{ 'active' if 'smart_notion' in request.endpoint else '' }}">
+                        <span class="text-xl ml-2">🧠</span>الملاحظات الذكية
+                    </a>
+                    <a href="{{ url_for('voice_notes') }}" class="nav-link {{ 'active' if 'voice_note' in request.endpoint else '' }}">
+                        <span class="text-xl ml-2">💡</span>بنك الأفكار
+                    </a>
+                    <a href="{{ url_for('liblab_plan') }}" class="nav-link {{ 'active' if 'liblab_plan' in request.endpoint else '' }}">
+                        <span class="text-xl ml-2">📋</span>خطة لبلاب
+                    </a>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobile-menu-btn" class="text-cyan-950">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <!-- Mobile menu -->
+            <div id="mobile-menu" class="hidden md:hidden pb-4">
+                <a href="{{ url_for('index') }}" class="block py-2 text-cyan-950 hover:bg-cyan-50 px-4 rounded">
+                    <span class="text-xl ml-2">🏠</span>لوحة التحكم
+                </a>
+                <a href="{{ url_for('tasks') }}" class="block py-2 text-cyan-950 hover:bg-cyan-50 px-4 rounded">
+                    <span class="text-xl ml-2">✅</span>المهام
+                </a>
+                <a href="{{ url_for('resources') }}" class="block py-2 text-cyan-950 hover:bg-cyan-50 px-4 rounded">
+                    <span class="text-xl ml-2">📚</span>الموارد
+                </a>
+                <a href="{{ url_for('brainstorm') }}" class="block py-2 text-cyan-950 hover:bg-cyan-50 px-4 rounded">
+                    <span class="text-xl ml-2">💡</span>العصف الذهني
+                </a>
+                <a href="{{ url_for('smart_notion') }}" class="block py-2 text-cyan-950 hover:bg-cyan-50 px-4 rounded">
+                    <span class="text-xl ml-2">🧠</span>الملاحظات الذكية
+                </a>
+                <a href="{{ url_for('voice_notes') }}" class="block py-2 text-cyan-950 hover:bg-cyan-50 px-4 rounded">
+                                                <span class="text-xl ml-2">💡</span>بنك الأفكار
+                </a>
+                <a href="{{ url_for('liblab_plan') }}" class="block py-2 text-cyan-950 hover:bg-cyan-50 px-4 rounded">
+                    <span class="text-xl ml-2">📋</span>خطة لبلاب
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="container mx-auto px-4 pt-4">
+                {% for category, message in messages %}
+                    <div class="flash-message bg-{{ 'green' if category == 'success' else 'red' }}-100 border border-{{ 'green' if category == 'success' else 'red' }}-400 text-{{ 'green' if category == 'success' else 'red' }}-700 px-4 py-3 rounded mb-4">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        // Mobile menu toggle
+        document.getElementById('mobile-menu-btn').addEventListener('click', function() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        });
+
+        // Add active class styling
+        const style = document.createElement('style');
+        style.textContent = `
+            .nav-link {
+                padding: 0.5rem 1rem;
+                border-radius: 0.5rem;
+                transition: all 0.3s ease;
+                display: flex;
+                align-items: center;
+                color: #083344;
+                text-decoration: none;
+            }
+            .nav-link:hover {
+                background-color: #f0f9ff;
+                transform: translateY(-1px);
+            }
+            .nav-link.active {
+                background-color: #083344;
+                color: white;
+                font-weight: 600;
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html> 

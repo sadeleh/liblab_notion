@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}فكرة جديدة{% endblock %}
+
+{% block content %}
+<div dir="rtl" style="font-family: 'Noto Kufi Arabic', 'Cairo', 'Tahoma', sans-serif;" class="text-right min-h-screen bg-gradient-to-br from-cyan-50 to-blue-50">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <!-- Header -->
+        <div class="mb-6 sm:mb-8">
+            <div class="flex items-center mb-4">
+                <a href="{{ url_for('voice_notes') }}" 
+                   class="text-cyan-600 hover:text-cyan-800 ml-4 p-2 rounded-full hover:bg-cyan-100 transition-colors duration-200">
+                    <i class="fas fa-arrow-right text-lg sm:text-xl"></i>
+                </a>
+                <h1 dir="rtl" class="text-2xl sm:text-3xl lg:text-4xl font-bold text-cyan-950">💡 فكرة جديدة</h1>
+            </div>
+            <p dir="rtl" class="text-sm sm:text-base text-gray-600">أضف فكرة جديدة إلى بنك الأفكار وابدأ التسجيل</p>
+        </div>
+
+        <!-- Form -->
+        <div class="max-w-2xl mx-auto">
+            <form method="POST" class="bg-white rounded-2xl shadow-xl p-6 sm:p-8 border border-gray-100">
+                <!-- Title Field -->
+                <div class="mb-6">
+                    <label for="title" dir="rtl" class="block text-sm sm:text-base font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-heading ml-2 text-cyan-600"></i>
+                        عنوان الفكرة *
+                    </label>
+                    <input type="text" 
+                           id="title" 
+                           name="title" 
+                           required
+                           dir="rtl"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors duration-200 text-right"
+                           placeholder="أدخل عنوان واضح وموضح للفكرة">
+                </div>
+
+                <!-- Description Field -->
+                <div class="mb-6">
+                    <label for="description" dir="rtl" class="block text-sm sm:text-base font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-file-alt ml-2 text-cyan-600"></i>
+                        وصف الفكرة (اختياري)
+                    </label>
+                    <textarea id="description" 
+                              name="description" 
+                              rows="4"
+                              dir="rtl"
+                              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors duration-200 text-right resize-none"
+                              placeholder="أضف وصف أو تفاصيل إضافية حول هذه الفكرة"></textarea>
+                </div>
+
+                <!-- Created By Field -->
+                <div class="mb-8">
+                    <label for="created_by" dir="rtl" class="block text-sm sm:text-base font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-user ml-2 text-cyan-600"></i>
+                        اسم المنشئ
+                    </label>
+                    <input type="text" 
+                           id="created_by" 
+                           name="created_by" 
+                           dir="rtl"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors duration-200 text-right"
+                           placeholder="أدخل اسمك (اختياري)">
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <button type="submit" 
+                            class="w-full sm:flex-1 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-semibold py-3 sm:py-4 px-6 rounded-lg transition duration-300 flex items-center justify-center">
+                        <i class="fas fa-microphone ml-2"></i>
+                        إضافة الفكرة والبدء بالتسجيل
+                    </button>
+                    
+                    <a href="{{ url_for('voice_notes') }}" 
+                       class="w-full sm:w-auto bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-3 sm:py-4 px-6 rounded-lg transition duration-300 flex items-center justify-center">
+                        <i class="fas fa-times ml-2"></i>
+                        إلغاء
+                    </a>
+                </div>
+            </form>
+
+            <!-- Instructions Card -->
+            <div class="bg-cyan-50 border border-cyan-200 rounded-2xl p-6 sm:p-8 mt-6 sm:mt-8">
+                <h3 dir="rtl" class="text-base sm:text-lg font-bold text-cyan-900 mb-4 flex items-center">
+                    <i class="fas fa-info-circle ml-2"></i>
+                    كيفية استخدام بنك الأفكار
+                </h3>
+                
+                <div class="space-y-3 sm:space-y-4">
+                    <div class="flex items-start">
+                        <div class="bg-cyan-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold ml-3 mt-0.5 flex-shrink-0">1</div>
+                        <p dir="rtl" class="text-sm sm:text-base text-gray-700">أضف الفكرة بعنوان واضح</p>
+                    </div>
+                    
+                    <div class="flex items-start">
+                        <div class="bg-cyan-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold ml-3 mt-0.5 flex-shrink-0">2</div>
+                        <p dir="rtl" class="text-sm sm:text-base text-gray-700">ابدأ التسجيل الصوتي باستخدام المايكروفون</p>
+                    </div>
+                    
+                    <div class="flex items-start">
+                        <div class="bg-cyan-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold ml-3 mt-0.5 flex-shrink-0">3</div>
+                        <p dir="rtl" class="text-sm sm:text-base text-gray-700">أضف عدة تسجيلات للفكرة الواحدة</p>
+                    </div>
+                    
+                    <div class="flex items-start">
+                        <div class="bg-cyan-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold ml-3 mt-0.5 flex-shrink-0">4</div>
+                        <p dir="rtl" class="text-sm sm:text-base text-gray-700">أضف تعليقات نصية بين التسجيلات</p>
+                    </div>
+                    
+                    <div class="flex items-start">
+                        <div class="bg-cyan-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold ml-3 mt-0.5 flex-shrink-0">5</div>
+                        <p dir="rtl" class="text-sm sm:text-base text-gray-700">راجع وأدير كل التسجيلات في مكان واحد</p>
+                    </div>
+                </div>
+                
+                <div class="mt-6 p-4 bg-white bg-opacity-60 rounded-lg border border-cyan-200">
+                    <p dir="rtl" class="text-xs sm:text-sm text-cyan-800">
+                        <i class="fas fa-lightbulb ml-1"></i>
+                        <strong>نصيحة:</strong> تأكد من السماح للمتصفح بالوصول للمايكروفون عند التسجيل
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Form validation
+document.querySelector('form').addEventListener('submit', function(e) {
+    const title = document.getElementById('title').value.trim();
+    
+    if (!title) {
+        e.preventDefault();
+        alert('يرجى إدخال عنوان للفكرة');
+        document.getElementById('title').focus();
+        return false;
+    }
+    
+    if (title.length < 3) {
+        e.preventDefault();
+        alert('يجب أن يكون العنوان على الأقل 3 أحرف');
+        document.getElementById('title').focus();
+        return false;
+    }
+});
+
+// Auto-resize textarea
+document.getElementById('description').addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = this.scrollHeight + 'px';
+});
+</script>
+{% endblock %} 

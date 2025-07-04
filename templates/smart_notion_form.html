@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+
+{% block title %}إنشاء ملاحظة ذكية جديدة - مركز تخطيط الفريق{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="bg-white rounded-xl shadow-sm p-6 mb-8 border-t-4 border-cyan-950">
+        <div class="flex items-center space-x-reverse space-x-4">
+            <a href="{{ url_for('smart_notion') }}" class="text-gray-400 hover:text-cyan-600 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+            </a>
+            <div>
+                <h1 class="text-3xl font-bold text-cyan-950 mb-2">🧠 إنشاء ملاحظة ذكية جديدة</h1>
+                <p class="text-gray-600">أدخل المعلومات الأساسية وستنتقل للدردشة مع المساعد الذكي</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Status Card -->
+    <div id="ai-status-card" class="rounded-xl p-6 mb-8 border">
+        <!-- Will be populated by JavaScript -->
+    </div>
+
+    <!-- Instructions Card -->
+    <div class="bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl p-6 mb-8 border border-cyan-200">
+        <div class="flex items-start space-x-reverse space-x-4">
+            <div class="bg-cyan-100 p-2 rounded-full">
+                <svg class="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <div>
+                <h3 class="text-lg font-semibold text-cyan-950 mb-2">كيف تعمل الملاحظات الذكية؟</h3>
+                <ul class="text-gray-700 space-y-2 text-sm">
+                    <li class="flex items-center space-x-reverse space-x-2">
+                        <span class="w-2 h-2 bg-cyan-400 rounded-full"></span>
+                        <span>أنشئ الملاحظة بعنوان واسم المنشئ فقط</span>
+                    </li>
+                    <li class="flex items-center space-x-reverse space-x-2">
+                        <span class="w-2 h-2 bg-cyan-400 rounded-full"></span>
+                        <span>ستنتقل لصفحة التحرير مع واجهة دردشة تفاعلية</span>
+                    </li>
+                    <li class="flex items-center space-x-reverse space-x-2">
+                        <span class="w-2 h-2 bg-cyan-400 rounded-full"></span>
+                        <span>تحدث مع المساعد الذكي لإنشاء وتعديل المحتوى في الوقت الفعلي</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Form -->
+    <div class="bg-white rounded-xl shadow-sm p-8">
+        <form method="POST" class="space-y-6">
+            <!-- Title Field -->
+            <div>
+                <label for="title" class="block text-sm font-medium text-gray-700 mb-2">
+                    عنوان الملاحظة <span class="text-red-500">*</span>
+                </label>
+                <input 
+                    type="text" 
+                    id="title" 
+                    name="title" 
+                    required 
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-colors"
+                    placeholder="مثال: خطة تطوير الموقع الإلكتروني"
+                >
+            </div>
+
+            <!-- Creator Field -->
+            <div>
+                <label for="created_by" class="block text-sm font-medium text-gray-700 mb-2">
+                    اسم المنشئ
+                </label>
+                <input 
+                    type="text" 
+                    id="created_by" 
+                    name="created_by" 
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-colors"
+                    placeholder="اختياري - اسمك أو الفريق"
+                >
+            </div>
+
+            <!-- Workflow Info -->
+            <div class="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-6 border border-blue-200">
+                <div class="flex items-start space-x-reverse space-x-4">
+                    <div class="bg-blue-100 p-2 rounded-full">
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="text-lg font-semibold text-blue-950 mb-2">🚀 سير العمل الجديد</h4>
+                        <div class="space-y-3">
+                            <div class="flex items-center space-x-reverse space-x-3">
+                                <span class="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">1</span>
+                                <span class="text-blue-800">أدخل عنوان الملاحظة واسمك</span>
+                            </div>
+                            <div class="flex items-center space-x-reverse space-x-3">
+                                <span class="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">2</span>
+                                <span class="text-blue-800">ستنتقل مباشرة لصفحة التحرير</span>
+                            </div>
+                            <div class="flex items-center space-x-reverse space-x-3">
+                                <span class="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">3</span>
+                                <span class="text-blue-800">استخدم الدردشة لإنشاء وتعديل المحتوى</span>
+                            </div>
+                        </div>
+                        <div class="bg-blue-100 p-3 rounded-lg mt-4">
+                            <p class="text-sm text-blue-800 font-medium mb-2">أمثلة للدردشة:</p>
+                            <ul class="text-xs text-blue-700 space-y-1">
+                                <li>• "أنشئ قائمة مهام لمشروع جديد"</li>
+                                <li>• "اكتب جدول أعمال للاجتماع الأسبوعي"</li>
+                                <li>• "أضف خطة تسويقية شاملة"</li>
+                                <li>• "إنشاء تحليل SWOT"</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Buttons -->
+            <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-reverse sm:space-x-4">
+                <button 
+                    type="submit" 
+                    class="bg-cyan-950 text-white px-8 py-3 rounded-lg hover:bg-cyan-800 transition-colors flex items-center justify-center space-x-reverse space-x-2 font-medium"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    <span>إنشاء الملاحظة</span>
+                </button>
+                
+                <a 
+                    href="{{ url_for('smart_notion') }}" 
+                    class="bg-gray-200 text-gray-700 px-8 py-3 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center space-x-reverse space-x-2 font-medium"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                    <span>إلغاء</span>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Removed setPrompt function - no longer needed with new workflow
+
+// Check AI Status on page load
+document.addEventListener('DOMContentLoaded', function() {
+    checkAIStatus();
+});
+
+async function checkAIStatus() {
+    const statusCard = document.getElementById('ai-status-card');
+    
+    try {
+        const response = await fetch('/api/ai-status');
+        const data = await response.json();
+        
+        if (data.enabled && data.status === 'available') {
+            statusCard.className = 'rounded-xl p-6 mb-8 border bg-green-50 border-green-200';
+            statusCard.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-reverse space-x-3">
+                        <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-green-800">✅ الذكاء الاصطناعي متاح</h3>
+                            <p class="text-green-700 text-sm">النموذج: ${data.selected_model || 'Gemini AI'}</p>
+                            <p class="text-green-600 text-xs">${data.message}</p>
+                        </div>
+                    </div>
+                    <button onclick="testGemini()" class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition-colors">
+                        اختبار الاتصال
+                    </button>
+                </div>
+            `;
+        } else if (data.status === 'error') {
+            statusCard.className = 'rounded-xl p-6 mb-8 border bg-red-50 border-red-200';
+            statusCard.innerHTML = `
+                <div class="flex items-start space-x-reverse space-x-4">
+                    <div class="bg-red-100 p-2 rounded-full">
+                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-red-800 mb-2">❌ خطأ في الاتصال مع Gemini AI</h3>
+                        <p class="text-red-700 mb-3">${data.message}</p>
+                        <div class="bg-red-100 p-3 rounded border text-sm text-red-800">
+                            <p class="font-medium mb-2">الحلول المقترحة:</p>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li>تحقق من صحة مفتاح API</li>
+                                <li>تأكد من الاتصال بالإنترنت</li>
+                                <li>جرب إعادة تشغيل التطبيق</li>
+                            </ul>
+                        </div>
+                        <button onclick="checkAIStatus()" class="mt-3 bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors">
+                            إعادة المحاولة
+                        </button>
+                    </div>
+                </div>
+            `;
+            disableAIFeatures();
+        } else {
+            statusCard.className = 'rounded-xl p-6 mb-8 border bg-yellow-50 border-yellow-200';
+            statusCard.innerHTML = `
+                <div class="flex items-start space-x-reverse space-x-4">
+                    <div class="bg-yellow-100 p-2 rounded-full">
+                        <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5">
+                            </svg>
+                        </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-yellow-800 mb-2">⚠️ مطلوب إعداد مفتاح Gemini AI</h3>
+                        <p class="text-yellow-700 mb-3">لاستخدام الميزات الذكية، يرجى إعداد مفتاح Gemini API</p>
+                        <div class="bg-yellow-100 p-3 rounded border text-sm text-yellow-800">
+                            <p class="font-medium mb-2">خطوات الإعداد:</p>
+                            <ol class="list-decimal list-inside space-y-1">
+                                <li>احصل على مفتاح API من: <a href="https://makersuite.google.com/app/apikey" target="_blank" class="underline">makersuite.google.com</a></li>
+                                <li>أضف متغير البيئة: <code class="bg-yellow-200 px-1 rounded">GEMINI_API_KEY=your-key-here</code></li>
+                                <li>أعد تشغيل التطبيق</li>
+                            </ol>
+                        </div>
+                        <p class="text-yellow-600 text-sm mt-3">💡 يمكنك إنشاء ملاحظات فارغة بدون الذكاء الاصطناعي</p>
+                    </div>
+                </div>
+            `;
+            
+            disableAIFeatures();
+        }
+    } catch (error) {
+        console.error('Error checking AI status:', error);
+        statusCard.className = 'rounded-xl p-6 mb-8 border bg-red-50 border-red-200';
+        statusCard.innerHTML = `
+            <div class="flex items-center space-x-reverse space-x-3">
+                <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                <div>
+                    <h3 class="text-lg font-semibold text-red-800">❌ خطأ في التحقق من حالة الذكاء الاصطناعي</h3>
+                    <p class="text-red-700 text-sm">حدث خطأ أثناء التحقق من حالة الذكاء الاصطناعي</p>
+                </div>
+            </div>
+        `;
+    }
+}
+
+function disableAIFeatures() {
+    // Show a message that AI features will be available after creation
+    const workflowCard = document.querySelector('.bg-gradient-to-r.from-blue-50');
+    if (workflowCard) {
+        const warningDiv = document.createElement('div');
+        warningDiv.className = 'mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg';
+        warningDiv.innerHTML = `
+            <p class="text-sm text-yellow-800">
+                ⚠️ الذكاء الاصطناعي غير متاح حالياً. يمكنك إنشاء ملاحظة فارغة وتعديلها يدوياً.
+            </p>
+        `;
+        workflowCard.appendChild(warningDiv);
+    }
+}
+
+async function testGemini() {
+    const button = event.target;
+    const originalText = button.textContent;
+    
+    button.textContent = 'جاري الاختبار...';
+    button.disabled = true;
+    
+    try {
+        const response = await fetch('/api/test-gemini');
+        const data = await response.json();
+        
+        if (data.success) {
+            button.textContent = '✅ نجح الاختبار';
+            button.classList.remove('bg-green-600', 'hover:bg-green-700');
+            button.classList.add('bg-green-800');
+            
+            // Show success message
+            const statusCard = document.getElementById('ai-status-card');
+            const successMsg = document.createElement('div');
+            successMsg.className = 'mt-2 p-2 bg-green-100 border border-green-300 rounded text-sm text-green-800';
+            successMsg.textContent = '✅ تم اختبار الاتصال بنجاح! يمكنك الآن استخدام الميزات الذكية.';
+            statusCard.appendChild(successMsg);
+            
+            setTimeout(() => {
+                successMsg.remove();
+                button.textContent = originalText;
+                button.disabled = false;
+                button.classList.remove('bg-green-800');
+                button.classList.add('bg-green-600', 'hover:bg-green-700');
+            }, 3000);
+        } else {
+            button.textContent = '❌ فشل الاختبار';
+            button.classList.remove('bg-green-600', 'hover:bg-green-700');
+            button.classList.add('bg-red-600');
+            
+            // Show error message
+            const statusCard = document.getElementById('ai-status-card');
+            const errorMsg = document.createElement('div');
+            errorMsg.className = 'mt-2 p-2 bg-red-100 border border-red-300 rounded text-sm text-red-800';
+            errorMsg.textContent = `❌ فشل الاختبار: ${data.error}`;
+            statusCard.appendChild(errorMsg);
+            
+            setTimeout(() => {
+                errorMsg.remove();
+                button.textContent = originalText;
+                button.disabled = false;
+                button.classList.remove('bg-red-600');
+                button.classList.add('bg-green-600', 'hover:bg-green-700');
+            }, 5000);
+        }
+    } catch (error) {
+        button.textContent = '❌ خطأ في الشبكة';
+        button.classList.remove('bg-green-600', 'hover:bg-green-700');
+        button.classList.add('bg-red-600');
+        
+        setTimeout(() => {
+            button.textContent = originalText;
+            button.disabled = false;
+            button.classList.remove('bg-red-600');
+            button.classList.add('bg-green-600', 'hover:bg-green-700');
+        }, 3000);
+    }
+}
+
+// Auto-resize textarea - removed since no textarea in new workflow
+</script>
+{% endblock %} 

@@ -1,0 +1,362 @@
+{% extends "base.html" %}
+
+{% block title %}الملاحظات الذكية - مركز تخطيط الفريق{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="bg-white rounded-xl shadow-sm p-6 mb-8 border-t-4 border-cyan-950">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
+            <div>
+                <h1 class="text-3xl font-bold text-cyan-950 mb-2">🧠 الملاحظات الذكية</h1>
+                <p class="text-gray-600">إنشاء وتعديل الملاحظات بمساعدة الذكاء الاصطناعي</p>
+            </div>
+            <a href="{{ url_for('new_smart_notion') }}" class="bg-cyan-950 text-white px-6 py-3 rounded-lg hover:bg-cyan-800 transition-colors flex items-center space-x-reverse space-x-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                <span>ملاحظة جديدة</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white rounded-xl shadow-sm p-6 border-r-4 border-cyan-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-600 text-sm">إجمالي الملاحظات</p>
+                    <p class="text-2xl font-bold text-cyan-950">{{ stats.total }}</p>
+                </div>
+                <div class="bg-cyan-100 p-3 rounded-full">
+                    <svg class="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm p-6 border-r-4 border-green-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-600 text-sm">تم إنشاؤها اليوم</p>
+                    <p class="text-2xl font-bold text-green-600">{{ stats.today }}</p>
+                </div>
+                <div class="bg-green-100 p-3 rounded-full">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm p-6 border-r-4 border-purple-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-600 text-sm">آخر تعديل</p>
+                    <p class="text-2xl font-bold text-purple-600">
+                        {% if notions %}
+                            {{ notions[0].updated_at.strftime('%d/%m') }}
+                        {% else %}
+                            --
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="bg-purple-100 p-3 rounded-full">
+                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Smart Notions Grid -->
+    {% if notions %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for notion in notions %}
+                <div class="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 border-t-4 border-cyan-500 group">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <h3 class="text-lg font-semibold text-gray-900 group-hover:text-cyan-950 transition-colors">
+                                {{ notion.title[:50] }}{% if notion.title|length > 50 %}...{% endif %}
+                            </h3>
+                            <div class="flex space-x-reverse space-x-2">
+                                <a href="{{ url_for('edit_smart_notion', notion_id=notion.id) }}" 
+                                   class="text-gray-400 hover:text-cyan-600 transition-colors p-1 rounded hover:bg-cyan-50"
+                                   title="تحرير الملاحظة">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                    </svg>
+                                </a>
+                                <button onclick="confirmDelete(this)" 
+                                        data-notion-id="{{ notion.id }}" 
+                                        data-notion-title="{{ notion.title[:30] }}{% if notion.title|length > 30 %}...{% endif %}"
+                                        class="text-gray-400 hover:text-red-600 transition-colors p-1 rounded hover:bg-red-50"
+                                        title="حذف الملاحظة">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1-1H8a1 1 0 00-1 1v3M4 7h16"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="text-gray-600 text-sm mb-4 line-clamp-3">
+                            {{ notion.content_html|striptags|truncate(100) }}
+                        </div>
+                        
+                        <div class="flex justify-between items-center text-sm text-gray-500">
+                            <span>{{ notion.created_by or 'مجهول' }}</span>
+                            <span>{{ notion.updated_at.strftime('%d/%m/%Y') }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-50 px-6 py-3 rounded-b-xl">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-gray-500">
+                                آخر تحديث: {{ notion.updated_at.strftime('%H:%M') }}
+                            </span>
+                            <a href="{{ url_for('edit_smart_notion', notion_id=notion.id) }}" class="text-cyan-600 hover:text-cyan-800 font-medium text-sm">
+                                فتح ← 
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-16">
+            <div class="bg-white rounded-xl shadow-sm p-12 border-2 border-dashed border-gray-200">
+                <div class="mb-6">
+                    <svg class="w-16 h-16 text-gray-300 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-medium text-gray-900 mb-2">لا توجد ملاحظات ذكية بعد</h3>
+                <p class="text-gray-500 mb-6">ابدأ بإنشاء أول ملاحظة ذكية باستخدام الذكاء الاصطناعي</p>
+                <a href="{{ url_for('new_smart_notion') }}" class="bg-cyan-950 text-white px-6 py-3 rounded-lg hover:bg-cyan-800 transition-colors inline-flex items-center space-x-reverse space-x-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    <span>إنشاء ملاحظة جديدة</span>
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-modal-in">
+        <div class="p-6">
+            <div class="flex items-center space-x-reverse space-x-4 mb-4">
+                <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1-1H8a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900">تأكيد الحذف</h3>
+                    <p class="text-sm text-gray-600">هذا الإجراء لا يمكن التراجع عنه</p>
+                </div>
+            </div>
+            
+            <div class="mb-6">
+                <p class="text-gray-700 mb-2">هل أنت متأكد من رغبتك في حذف الملاحظة:</p>
+                <p class="font-semibold text-gray-900 bg-gray-50 p-3 rounded-lg" id="deleteNotionTitle"></p>
+            </div>
+            
+            <div class="flex space-x-reverse space-x-3">
+                <button onclick="closeDeleteModal()" 
+                        class="flex-1 bg-gray-200 text-gray-800 px-4 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium">
+                    إلغاء
+                </button>
+                <button onclick="executeDelete()" 
+                        id="confirmDeleteBtn"
+                        class="flex-1 bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium">
+                    حذف الملاحظة
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+@keyframes modal-in {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.animate-modal-in {
+    animation: modal-in 0.3s ease-out;
+}
+
+/* Toast styles */
+.toast {
+    position: fixed;
+    top: 2rem;
+    right: 2rem;
+    z-index: 60;
+    max-width: 24rem;
+    padding: 1rem 1.5rem;
+    border-radius: 0.75rem;
+    color: white;
+    font-weight: 500;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    animation: toast-in 0.4s ease-out;
+}
+
+.toast.success { background-color: #10b981; }
+.toast.error { background-color: #ef4444; }
+
+@keyframes toast-in {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes toast-out {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+</style>
+
+<script>
+let pendingDeleteId = null;
+
+function confirmDelete(button) {
+    const notionId = button.dataset.notionId;
+    const notionTitle = button.dataset.notionTitle;
+    
+    pendingDeleteId = notionId;
+    document.getElementById('deleteNotionTitle').textContent = notionTitle;
+    document.getElementById('deleteModal').classList.remove('hidden');
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteModal').classList.add('hidden');
+    pendingDeleteId = null;
+}
+
+async function executeDelete() {
+    if (!pendingDeleteId) return;
+    
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+    const originalText = confirmBtn.textContent;
+    
+    // Show loading state
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<span class="flex items-center justify-center"><svg class="animate-spin w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>جاري الحذف...</span>';
+    
+    try {
+        const response = await fetch(`/api/smart_notion/${pendingDeleteId}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(data.message, 'success');
+            
+            // Remove the notion card from DOM with animation
+            const notionCard = document.querySelector(`[data-notion-id="${pendingDeleteId}"]`).closest('.bg-white');
+            notionCard.style.transition = 'all 0.3s ease-out';
+            notionCard.style.transform = 'scale(0.95)';
+            notionCard.style.opacity = '0';
+            
+            setTimeout(() => {
+                notionCard.remove();
+                updateStats();
+            }, 300);
+            
+            closeDeleteModal();
+        } else {
+            showToast(data.message || 'حدث خطأ أثناء الحذف', 'error');
+        }
+    } catch (error) {
+        console.error('Delete error:', error);
+        showToast('حدث خطأ في الاتصال', 'error');
+    } finally {
+        // Reset button
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = originalText;
+    }
+}
+
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    
+    const icon = type === 'success' ? '✅' : '❌';
+    toast.innerHTML = `
+        <div class="flex items-center space-x-reverse space-x-3">
+            <span class="text-lg">${icon}</span>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Auto remove after 4 seconds
+    setTimeout(() => {
+        toast.style.animation = 'toast-out 0.3s ease-out';
+        setTimeout(() => {
+            if (toast.parentNode) {
+                document.body.removeChild(toast);
+            }
+        }, 300);
+    }, 4000);
+}
+
+function updateStats() {
+    // Update the total count
+    const totalElement = document.querySelector('.text-2xl.font-bold.text-cyan-950');
+    if (totalElement) {
+        const currentCount = parseInt(totalElement.textContent);
+        totalElement.textContent = Math.max(0, currentCount - 1);
+    }
+}
+
+// Close modal on escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeDeleteModal();
+    }
+});
+
+// Close modal on backdrop click
+document.getElementById('deleteModal').addEventListener('click', function(event) {
+    if (event.target === this) {
+        closeDeleteModal();
+    }
+});
+</script>
+{% endblock %} 

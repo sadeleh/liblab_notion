@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}جلسات العصف الذهني - مركز تخطيط الفريق{% endblock %}
+
+{% block content %}
+<header class="text-center mb-8">
+    <h1 class="text-3xl md:text-4xl font-bold text-cyan-950">جلسات العصف الذهني</h1>
+    <p class="text-lg text-gray-600 mt-2">توليد الأفكار التعاونية لفريقك</p>
+</header>
+
+<!-- Quick Actions -->
+<div class="flex justify-between items-center mb-6">
+    <div class="flex space-x-4 space-x-reverse">
+        <a href="{{ url_for('new_brainstorm_session') }}" class="nav-btn bg-cyan-950 text-white hover:bg-cyan-800 font-bold py-2 px-4 rounded-lg">
+            <span class="text-xl ml-2">🧠</span>جلسة جديدة
+        </a>
+    </div>
+</div>
+
+<!-- Sessions Grid -->
+{% if sessions %}
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {% for session in sessions %}
+            <div class="card bg-white p-6 rounded-xl shadow-lg border-orange-500">
+                <div class="flex justify-between items-start mb-3">
+                    <h3 class="text-lg font-bold text-gray-900">{{ session.title }}</h3>
+                    <span class="px-2 py-1 text-xs font-medium rounded-full 
+                        {{ 'bg-green-100 text-green-800' if session.status == 'active' else
+                           'bg-gray-100 text-gray-800' if session.status == 'completed' else
+                           'bg-yellow-100 text-yellow-800' }}">
+                        {{ 'نشطة' if session.status == 'active' else 'مكتملة' if session.status == 'completed' else 'مؤرشفة' }}
+                    </span>
+                </div>
+                
+                {% if session.description %}
+                    <p class="text-gray-600 mb-4">{{ session.description[:100] }}{{ '...' if session.description|length > 100 else '' }}</p>
+                {% endif %}
+                
+                <div class="space-y-2 mb-4">
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-500">أنشأها:</span>
+                        <span class="font-medium">{{ session.created_by or 'مجهول' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-500">تاريخ الإنشاء:</span>
+                        <span class="font-medium">{{ session.created_at.strftime('%Y-%m-%d') }}</span>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex space-x-2 space-x-reverse">
+                    <a href="{{ url_for('brainstorm_session', session_id=session.id) }}" 
+                       class="flex-1 text-center py-2 px-3 text-sm font-medium bg-cyan-950 text-white rounded-lg hover:bg-cyan-800">
+                        <span class="ml-1">💡</span>انضم للجلسة
+                    </a>
+                    
+                    {% if session.status == 'active' %}
+                        <button onclick="toggleSessionStatus({{ session.id }}, 'completed')"
+                                class="py-2 px-3 text-sm font-medium bg-green-100 text-green-800 rounded-lg hover:bg-green-200">
+                            ✅
+                        </button>
+                    {% endif %}
+                </div>
+                
+                <div class="mt-3 pt-3 border-t border-gray-200">
+                    <div class="flex justify-between items-center text-xs text-gray-500">
+                        <span>Status: {{ session.status.title() }}</span>
+                        <div class="flex items-center space-x-1">
+                            <span class="text-lg">🧠</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="text-center py-12">
+        <div class="text-6xl mb-4">🧠</div>
+        <h3 class="text-xl font-bold text-gray-900 mb-2">لا توجد جلسات عصف ذهني بعد</h3>
+        <p class="text-gray-600 mb-6">ابدأ أول جلسة تفكير تعاونية!</p>
+        <a href="{{ url_for('new_brainstorm_session') }}" class="nav-btn bg-cyan-950 text-white hover:bg-cyan-800 font-bold py-3 px-6 rounded-lg">
+            <span class="text-xl ml-2">🧠</span>إنشاء جلسة
+        </a>
+    </div>
+{% endif %}
+
+<!-- Tips Section -->
+<div class="mt-12 bg-orange-50 border border-orange-200 rounded-lg p-6">
+    <h3 class="font-bold text-orange-950 mb-3">💡 أفضل ممارسات العصف الذهني</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-orange-800">
+        <ul class="space-y-2">
+            <li>• <strong>عدم إصدار أحكام:</strong> جميع الأفكار مرحب بها</li>
+            <li>• <strong>البناء على الأفكار:</strong> توسيع أفكار الآخرين</li>
+            <li>• <strong>التركيز:</strong> الحفاظ على هدف الجلسة في الاعتبار</li>
+        </ul>
+        <ul class="space-y-2">
+            <li>• <strong>الكمية قبل الجودة:</strong> توليد أفكار كثيرة أولاً</li>
+            <li>• <strong>تشجيع المشاركة:</strong> يجب على الجميع المساهمة</li>
+            <li>• <strong>التصويت على المفضلة:</strong> استخدام التصويت لترتيب الأولويات</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    function toggleSessionStatus(sessionId, newStatus) {
+        // This would typically make an API call to update the session status
+        // For now, we'll just refresh the page
+        fetch(`/api/sessions/${sessionId}/status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ status: newStatus })
+        }).then(() => {
+            location.reload();
+        }).catch(() => {
+            // Fallback - just reload
+            location.reload();
+        });
+    }
+</script>
+{% endblock %} 
