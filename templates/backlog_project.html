@@ -1,0 +1,484 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.name }} - Backlog{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8" dir="ltr">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex justify-between items-start mb-4">
+            <div>
+                <a href="{{ url_for('backlog') }}" class="text-cyan-950 hover:underline text-sm mb-2 inline-block">← Back to Backlog</a>
+                <h2 class="text-4xl font-bold text-cyan-950 mb-2">{{ project.name }}</h2>
+                <p class="text-gray-600 text-lg">{{ project.description }}</p>
+            </div>
+            <div class="flex space-x-2">
+                <a href="{{ url_for('backlog_export_project', project_id=project.id) }}" 
+                   class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+                   title="Export this project as JSON">
+                    📤 Export
+                </a>
+                <a href="{{ url_for('backlog_phase_add', project_id=project.id) }}" class="bg-cyan-950 text-white px-4 py-2 rounded-lg hover:bg-cyan-900 transition">
+                    ➕ New Phase
+                </a>
+                <a href="{{ url_for('backlog_project_edit', project_id=project.id) }}" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition">
+                    ✏️ Edit Project
+                </a>
+            </div>
+        </div>
+
+        <!-- Project Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-lg shadow p-4 text-center">
+                <div class="text-3xl font-bold text-cyan-950">{{ phases|length }}</div>
+                <div class="text-sm text-gray-600">Phases</div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-4 text-center">
+                <div class="text-3xl font-bold text-cyan-950">{{ project.total_stories }}</div>
+                <div class="text-sm text-gray-600">Total Stories</div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-4 text-center">
+                <div class="text-3xl font-bold text-green-600">{{ project.completed_stories }}</div>
+                <div class="text-sm text-gray-600">Completed</div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-4 text-center">
+                <div class="text-3xl font-bold text-blue-600">{{ project.total_stories - project.completed_stories }}</div>
+                <div class="text-sm text-gray-600">Remaining</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Phases -->
+    {% if phases %}
+        {% for phase in phases %}
+        <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 mb-4 overflow-hidden border border-gray-200" 
+             data-phase-id="{{ phase.id }}">
+            <!-- Phase Header (Clickable) -->
+            <div class="bg-gradient-to-br from-gray-50 to-gray-100 p-5 cursor-pointer hover:from-gray-100 hover:to-gray-200 transition-all border-b border-gray-200"
+                 onclick="togglePhase({{ phase.id }})">
+                <div class="flex justify-between items-start gap-4">
+                    <div class="flex-1 flex items-start space-x-4">
+                        <!-- Expand/Collapse Icon -->
+                        <div class="mt-1">
+                            <div class="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center group-hover:shadow-md transition-shadow">
+                                <svg class="w-5 h-5 text-gray-600 transform transition-transform duration-300 phase-icon-{{ phase.id }}" 
+                                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        
+                        <div class="flex-1">
+                            <div class="flex items-center flex-wrap gap-2 mb-2">
+                                <h3 class="text-lg font-bold text-gray-800">
+                                    {{ phase.name }}
+                                </h3>
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold
+                                    {% if phase.status == 'completed' %}bg-green-100 text-green-700 border border-green-200
+                                    {% elif phase.status == 'in_progress' %}bg-blue-100 text-blue-700 border border-blue-200
+                                    {% else %}bg-gray-200 text-gray-700 border border-gray-300{% endif %}">
+                                    {% if phase.status == 'completed' %}✅ Completed
+                                    {% elif phase.status == 'in_progress' %}🔄 In Progress
+                                    {% else %}⏳ {{ phase.status|title }}{% endif %}
+                                </span>
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 border border-purple-200">
+                                    📝 {{ phase.user_stories|length }} stories
+                                </span>
+                                {% if phase.duration_weeks %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-200">
+                                    ⏱️ {{ phase.duration_weeks }} weeks
+                                </span>
+                                {% endif %}
+                            </div>
+                            {% if phase.goal %}
+                            <p class="text-sm text-gray-600 mt-1">🎯 {{ phase.goal }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="flex items-start gap-2" onclick="event.stopPropagation()">
+                        <a href="{{ url_for('backlog_story_add', phase_id=phase.id) }}" 
+                           class="inline-flex items-center px-3 py-2 bg-cyan-950 text-white rounded-lg hover:bg-cyan-900 transition-all duration-200 text-xs font-semibold shadow-sm hover:shadow-md">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            Add Story
+                        </a>
+                        <a href="{{ url_for('backlog_phase_edit', phase_id=phase.id) }}" 
+                           class="inline-flex items-center px-3 py-2 bg-white text-gray-700 rounded-lg hover:bg-gray-100 transition-all duration-200 text-xs font-semibold shadow-sm hover:shadow-md border border-gray-300">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                            Edit Phase
+                        </a>
+                        <form method="POST" action="{{ url_for('backlog_phase_delete', phase_id=phase.id) }}" 
+                              onsubmit="return confirm('Are you sure you want to delete this phase and all {{ phase.user_stories|length }} stories? This action cannot be undone!')" class="inline">
+                            <button type="submit" 
+                                    class="inline-flex items-center px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-all duration-200 text-xs font-semibold shadow-sm hover:shadow-md border border-red-200">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                                Delete Phase
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Phase Progress Bar (Always Visible) -->
+                {% if phase.user_stories|length > 0 %}
+                <div class="mt-4 ml-12">
+                    <div class="flex justify-between text-xs text-gray-600 mb-2">
+                        <span class="font-medium">
+                            <span class="text-green-600 font-bold">{{ phase.user_stories|selectattr('status', 'equalto', 'completed')|list|length }}</span> / {{ phase.user_stories|length }} completed
+                        </span>
+                        <span class="font-bold
+                            {% if phase.progress_percentage == 100 %}text-green-600
+                            {% elif phase.progress_percentage >= 50 %}text-blue-600
+                            {% else %}text-gray-600{% endif %}">
+                            {{ phase.progress_percentage }}%
+                        </span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                        <div class="h-2 rounded-full transition-all duration-500 ease-out
+                                    {% if phase.progress_percentage == 100 %}bg-gradient-to-r from-green-400 to-green-500
+                                    {% elif phase.progress_percentage >= 70 %}bg-gradient-to-r from-blue-400 to-blue-500
+                                    {% elif phase.progress_percentage >= 40 %}bg-gradient-to-r from-yellow-400 to-yellow-500
+                                    {% else %}bg-gradient-to-r from-gray-400 to-gray-500{% endif %}" 
+                             style="width: {{ phase.progress_percentage }}%"></div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- User Stories (Collapsible Content) -->
+            <div class="p-6 bg-gray-50 phase-content-{{ phase.id }} hidden">
+                {% if phase.user_stories|length > 0 %}
+                    <div class="space-y-4 sortable-stories" data-phase-id="{{ phase.id }}">
+                        {% for story in phase.user_stories|sort(attribute='order_index') %}
+                        <div id="story-{{ story.id }}" class="group relative bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 cursor-move story-item border-l-4
+                                    {% if story.status == 'completed' %}border-green-500
+                                    {% elif story.status == 'in_progress' %}border-blue-500
+                                    {% elif story.status == 'blocked' %}border-red-500
+                                    {% else %}border-gray-300{% endif %}"
+                             data-story-id="{{ story.id }}">
+                            
+                            <!-- Drag Handle Indicator -->
+                            <div class="absolute left-0 top-1/2 transform -translate-y-1/2 -ml-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div class="bg-gray-400 rounded-full p-2 shadow-lg">
+                                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            
+                            <div class="p-5">
+                                <!-- Header Section -->
+                                <div class="flex justify-between items-start mb-4">
+                                    <div class="flex-1">
+                                        <!-- Story ID and Badges -->
+                                        <div class="flex items-center flex-wrap gap-2 mb-3">
+                                            <span class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold bg-gradient-to-r from-cyan-950 to-cyan-800 text-white shadow-sm">
+                                                {{ story.story_id }}
+                                            </span>
+                                            
+                                            <!-- Priority Badge -->
+                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold shadow-sm
+                                                {% if story.priority == 'high' %}bg-gradient-to-r from-red-500 to-red-600 text-white
+                                                {% elif story.priority == 'medium' %}bg-gradient-to-r from-yellow-400 to-yellow-500 text-white
+                                                {% else %}bg-gradient-to-r from-green-400 to-green-500 text-white{% endif %}">
+                                                {% if story.priority == 'high' %}🔥 High
+                                                {% elif story.priority == 'medium' %}⚡ Medium
+                                                {% else %}✨ Low{% endif %}
+                                            </span>
+                                            
+                                            <!-- Complexity Badge -->
+                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold
+                                                {% if story.complexity == 'high' %}bg-purple-100 text-purple-700 border border-purple-200
+                                                {% elif story.complexity == 'medium' %}bg-blue-100 text-blue-700 border border-blue-200
+                                                {% else %}bg-gray-100 text-gray-700 border border-gray-200{% endif %}">
+                                                {% if story.complexity == 'high' %}🎯 Complex
+                                                {% elif story.complexity == 'medium' %}⚙️ Medium
+                                                {% else %}🎈 Simple{% endif %}
+                                            </span>
+                                        </div>
+                                        
+                                        <!-- Story Title -->
+                                        <h4 class="text-lg font-bold text-gray-900 mb-2 group-hover:text-cyan-950 transition-colors">
+                                            {{ story.title }}
+                                        </h4>
+                                        
+                                        <!-- User Story Format -->
+                                        {% if story.user_role and story.user_goal %}
+                                        <div class="bg-gradient-to-r from-cyan-50 to-blue-50 rounded-lg p-3 mb-3 border-l-2 border-cyan-500">
+                                            <p class="text-sm text-gray-700 leading-relaxed">
+                                                <span class="font-semibold text-cyan-900">👤 As a</span> <strong class="text-cyan-950">{{ story.user_role }}</strong><br>
+                                                <span class="font-semibold text-cyan-900">💭 I want to</span> {{ story.user_goal }}
+                                                {% if story.user_benefit %}<br><span class="font-semibold text-cyan-900">🎯 So I can</span> {{ story.user_benefit }}{% endif %}
+                                            </p>
+                                        </div>
+                                        {% elif story.description %}
+                                        <p class="text-sm text-gray-600 bg-gray-50 rounded-lg p-3 mb-3">{{ story.description[:150] }}{% if story.description|length > 150 %}...{% endif %}</p>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <!-- Status Badge (Large) -->
+                                    <div class="ml-4 flex flex-col items-center">
+                                        <div class="px-4 py-2 rounded-xl text-xs font-bold shadow-md
+                                            {% if story.status == 'completed' %}bg-gradient-to-br from-green-400 to-green-600 text-white
+                                            {% elif story.status == 'in_progress' %}bg-gradient-to-br from-blue-400 to-blue-600 text-white
+                                            {% elif story.status == 'blocked' %}bg-gradient-to-br from-red-400 to-red-600 text-white
+                                            {% else %}bg-gradient-to-br from-gray-300 to-gray-400 text-gray-800{% endif %}">
+                                            {% if story.status == 'completed' %}<div class="text-center">✅<br>Done</div>
+                                            {% elif story.status == 'in_progress' %}<div class="text-center">🔄<br>Active</div>
+                                            {% elif story.status == 'blocked' %}<div class="text-center">🚫<br>Blocked</div>
+                                            {% else %}<div class="text-center">⏳<br>Pending</div>{% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Progress Section -->
+                                <div class="mb-4">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <div class="flex items-center space-x-2">
+                                            <span class="text-xs font-semibold text-gray-600">
+                                                ✓ {{ story.acceptance_criteria|selectattr('is_completed')|list|length }} / {{ story.acceptance_criteria|length }} Criteria
+                                            </span>
+                                        </div>
+                                        <div class="flex items-center space-x-2">
+                                            <span class="text-sm font-bold
+                                                {% if story.completion_percentage == 100 %}text-green-600
+                                                {% elif story.completion_percentage >= 50 %}text-blue-600
+                                                {% else %}text-gray-600{% endif %}">
+                                                {{ story.completion_percentage }}%
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                        <div class="h-2 rounded-full transition-all duration-500 ease-out
+                                            {% if story.completion_percentage == 100 %}bg-gradient-to-r from-green-400 to-green-600
+                                            {% elif story.completion_percentage >= 50 %}bg-gradient-to-r from-blue-400 to-blue-600
+                                            {% else %}bg-gradient-to-r from-gray-400 to-gray-500{% endif %}"
+                                             style="width: {{ story.completion_percentage }}%">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Quick Stats -->
+                                {% if story.notes|length > 0 or story.technical_notes %}
+                                <div class="flex items-center space-x-4 mb-4 text-xs text-gray-500">
+                                    {% if story.notes|length > 0 %}
+                                    <span class="flex items-center">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
+                                        </svg>
+                                        {{ story.notes|length }} notes
+                                    </span>
+                                    {% endif %}
+                                    {% if story.technical_notes %}
+                                    <span class="flex items-center">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+                                        </svg>
+                                        Technical notes
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                                
+                                <!-- Action Buttons -->
+                                <div class="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
+                                    <a href="{{ url_for('backlog_story', story_id=story.id, return_phase=phase.id) }}" 
+                                       class="inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-cyan-950 to-cyan-800 text-white rounded-lg hover:from-cyan-900 hover:to-cyan-700 transition-all duration-200 text-sm font-semibold shadow-sm hover:shadow-md transform hover:-translate-y-0.5">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                        </svg>
+                                        View Details
+                                    </a>
+                                    <a href="{{ url_for('backlog_story_edit', story_id=story.id, return_phase=phase.id) }}" 
+                                       class="inline-flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200 text-sm font-semibold shadow-sm hover:shadow-md transform hover:-translate-y-0.5">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                        </svg>
+                                        Edit
+                                    </a>
+                                    <form method="POST" action="{{ url_for('backlog_story_delete', story_id=story.id) }}" 
+                                          onsubmit="return confirm('Are you sure you want to delete this story and all its acceptance criteria?')" class="inline">
+                                        <input type="hidden" name="return_phase" value="{{ phase.id }}">
+                                        <button type="submit" 
+                                                class="inline-flex items-center justify-center px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-all duration-200 text-sm font-semibold shadow-sm hover:shadow-md transform hover:-translate-y-0.5">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                            Delete
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-8 text-gray-500">
+                        <p class="mb-2">No stories in this phase</p>
+                        <a href="{{ url_for('backlog_story_add', phase_id=phase.id) }}" class="text-cyan-950 hover:underline">
+                            ➕ Add New Story
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-16 bg-white rounded-lg shadow">
+            <div class="text-6xl mb-4">📋</div>
+            <h3 class="text-2xl font-bold text-gray-800 mb-2">No phases yet</h3>
+            <p class="text-gray-600 mb-6">Start by adding a phase to this project</p>
+            <a href="{{ url_for('backlog_phase_add', project_id=project.id) }}" class="inline-block bg-cyan-950 text-white px-8 py-3 rounded-lg hover:bg-cyan-900 transition">
+                ➕ Add New Phase
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Phase Accordion & Drag and Drop JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script>
+// Phase accordion functionality
+function togglePhase(phaseId) {
+    const content = document.querySelector(`.phase-content-${phaseId}`);
+    const icon = document.querySelector(`.phase-icon-${phaseId}`);
+    
+    if (content.classList.contains('hidden')) {
+        // Close all other phases (optional - remove these lines if you want multiple phases open)
+        document.querySelectorAll('[class*="phase-content-"]').forEach(el => {
+            el.classList.add('hidden');
+        });
+        document.querySelectorAll('[class*="phase-icon-"]').forEach(el => {
+            el.classList.remove('rotate-180');
+        });
+        
+        // Open this phase
+        content.classList.remove('hidden');
+        icon.classList.add('rotate-180');
+        
+        // Smooth scroll to phase
+        setTimeout(() => {
+            content.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 100);
+    } else {
+        // Close this phase
+        content.classList.add('hidden');
+        icon.classList.remove('rotate-180');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if there's a phase_id and story_id parameter in URL (for returning from add/edit)
+    const urlParams = new URLSearchParams(window.location.search);
+    const returnPhaseId = urlParams.get('phase_id');
+    const returnStoryId = urlParams.get('story_id');
+    
+    const phases = document.querySelectorAll('[data-phase-id]');
+    let opened = false;
+    
+    if (returnPhaseId) {
+        // Open the specific phase we're returning to
+        const targetPhase = document.querySelector(`[data-phase-id="${returnPhaseId}"]`);
+        if (targetPhase) {
+            togglePhase(parseInt(returnPhaseId));
+            
+            // If story_id is provided, scroll to the specific story
+            if (returnStoryId) {
+                setTimeout(() => {
+                    const targetStory = document.getElementById(`story-${returnStoryId}`);
+                    if (targetStory) {
+                        targetStory.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        
+                        // Add a brief highlight effect to the story
+                        targetStory.style.boxShadow = '0 0 0 4px rgba(6, 182, 212, 0.5)';
+                        setTimeout(() => {
+                            targetStory.style.boxShadow = '';
+                        }, 2000);
+                    }
+                }, 200);
+            } else {
+                // No specific story, just scroll to the phase
+                setTimeout(() => {
+                    targetPhase.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    // Also scroll up a bit to show some context above
+                    setTimeout(() => {
+                        window.scrollBy({ top: -100, behavior: 'smooth' });
+                    }, 300);
+                }, 100);
+            }
+            
+            opened = true;
+            
+            // Clean up URL without reloading
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }
+    
+    // If no specific phase requested, auto-open first in-progress phase
+    if (!opened) {
+        // Try to open first in-progress phase (look for blue badge)
+        phases.forEach(phase => {
+            if (!opened) {
+                const statusBadge = phase.querySelector('.bg-blue-100');
+                if (statusBadge) {
+                    const phaseId = phase.getAttribute('data-phase-id');
+                    togglePhase(parseInt(phaseId));
+                    opened = true;
+                }
+            }
+        });
+        
+        // If no in-progress phase, open first phase
+        if (!opened && phases.length > 0) {
+            const firstPhaseId = phases[0].getAttribute('data-phase-id');
+            togglePhase(parseInt(firstPhaseId));
+        }
+    }
+    
+    // Initialize drag and drop for each phase
+    const sortableElements = document.querySelectorAll('.sortable-stories');
+    
+    sortableElements.forEach(el => {
+        new Sortable(el, {
+            group: 'stories',
+            animation: 150,
+            handle: '.story-item',
+            ghostClass: 'opacity-50',
+            dragClass: 'shadow-2xl',
+            onEnd: function(evt) {
+                const storyId = evt.item.getAttribute('data-story-id');
+                const newPhaseId = evt.to.getAttribute('data-phase-id');
+                const newOrder = evt.newIndex;
+                
+                // Send update to server
+                fetch(`/backlog/story/${storyId}/reorder`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        new_order: newOrder,
+                        new_phase_id: parseInt(newPhaseId)
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('Story reordered successfully');
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

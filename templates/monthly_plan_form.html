@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'تعديل الخطة الشهرية' if plan else 'خطة شهرية جديدة' }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6 max-w-4xl">
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-cyan-50 to-blue-50 rounded-lg p-6 mb-6 border border-cyan-200">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-cyan-950 mb-2" dir="rtl">
+                    {{ '📝 تعديل الخطة الشهرية' if plan else '➕ خطة شهرية جديدة' }}
+                </h1>
+                <p class="text-gray-600 text-sm sm:text-base" dir="rtl">
+                    {{ 'قم بتعديل تفاصيل خطتك الشهرية' if plan else 'أنشئ خطة شهرية جديدة لتنظيم أهدافك' }}
+                </p>
+            </div>
+            <a href="{{ url_for('monthly_plans') }}" 
+               class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
+                ← العودة للقائمة
+            </a>
+        </div>
+    </div>
+
+    <!-- Form -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <form method="POST" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Title -->
+                <div class="md:col-span-2">
+                    <label for="title" class="block text-sm font-medium text-gray-700 mb-2" dir="rtl">
+                        عنوان الخطة <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" 
+                           id="title" 
+                           name="title" 
+                           value="{{ plan.title if plan else '' }}"
+                           required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                           placeholder="مثال: خطة سبتمبر 2025 - التطوير المهني"
+                           dir="rtl">
+                </div>
+
+                <!-- Month -->
+                <div>
+                    <label for="month" class="block text-sm font-medium text-gray-700 mb-2" dir="rtl">
+                        الشهر <span class="text-red-500">*</span>
+                    </label>
+                    <select id="month" 
+                            name="month" 
+                            required 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                        {% set months = [
+                            (1, 'يناير'), (2, 'فبراير'), (3, 'مارس'), (4, 'أبريل'),
+                            (5, 'مايو'), (6, 'يونيو'), (7, 'يوليو'), (8, 'أغسطس'),
+                            (9, 'سبتمبر'), (10, 'أكتوبر'), (11, 'نوفمبر'), (12, 'ديسمبر')
+                        ] %}
+                        {% for month_num, month_name in months %}
+                        <option value="{{ month_num }}" 
+                                {{ 'selected' if plan and plan.month == month_num else 'selected' if not plan and month_num == current_month else '' }}>
+                            {{ month_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Year -->
+                <div>
+                    <label for="year" class="block text-sm font-medium text-gray-700 mb-2" dir="rtl">
+                        السنة <span class="text-red-500">*</span>
+                    </label>
+                    <select id="year" 
+                            name="year" 
+                            required 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                        {% for year in range(2024, 2030) %}
+                        <option value="{{ year }}" 
+                                {{ 'selected' if plan and plan.year == year else 'selected' if not plan and year == current_year else '' }}>
+                            {{ year }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Priority -->
+                <div>
+                    <label for="priority" class="block text-sm font-medium text-gray-700 mb-2" dir="rtl">الأولوية</label>
+                    <select id="priority" 
+                            name="priority" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                        <option value="low" {{ 'selected' if plan and plan.priority == 'low' else '' }}>منخفض</option>
+                        <option value="medium" {{ 'selected' if plan and plan.priority == 'medium' else 'selected' if not plan else '' }}>متوسط</option>
+                        <option value="high" {{ 'selected' if plan and plan.priority == 'high' else '' }}>عالي</option>
+                    </select>
+                </div>
+
+                <!-- Category -->
+                <div>
+                    <label for="category" class="block text-sm font-medium text-gray-700 mb-2" dir="rtl">الفئة</label>
+                    <select id="category" 
+                            name="category" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                        <option value="general" {{ 'selected' if plan and plan.category == 'general' else 'selected' if not plan else '' }}>عام</option>
+                        <option value="work" {{ 'selected' if plan and plan.category == 'work' else '' }}>عمل</option>
+                        <option value="personal" {{ 'selected' if plan and plan.category == 'personal' else '' }}>شخصي</option>
+                        <option value="health" {{ 'selected' if plan and plan.category == 'health' else '' }}>صحة</option>
+                        <option value="education" {{ 'selected' if plan and plan.category == 'education' else '' }}>تعليم</option>
+                        <option value="finance" {{ 'selected' if plan and plan.category == 'finance' else '' }}>مالية</option>
+                        <option value="family" {{ 'selected' if plan and plan.category == 'family' else '' }}>عائلة</option>
+                        <option value="hobbies" {{ 'selected' if plan and plan.category == 'hobbies' else '' }}>هوايات</option>
+                    </select>
+                </div>
+
+                {% if plan %}
+                <!-- Status (only for editing) -->
+                <div>
+                    <label for="status" class="block text-sm font-medium text-gray-700 mb-2" dir="rtl">الحالة</label>
+                    <select id="status" 
+                            name="status" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                        <option value="active" {{ 'selected' if plan.status == 'active' else '' }}>نشط</option>
+                        <option value="completed" {{ 'selected' if plan.status == 'completed' else '' }}>مكتمل</option>
+                        <option value="archived" {{ 'selected' if plan.status == 'archived' else '' }}>مؤرشف</option>
+                    </select>
+                </div>
+                {% endif %}
+
+                <!-- Tags -->
+                <div class="{{ 'md:col-span-1' if plan else 'md:col-span-2' }}">
+                    <label for="tags" class="block text-sm font-medium text-gray-700 mb-2" dir="rtl">العلامات</label>
+                    <input type="text" 
+                           id="tags" 
+                           name="tags" 
+                           value="{{ plan.tags if plan else '' }}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                           placeholder="مثال: تطوير، مهارات، أهداف (مفصولة بفواصل)"
+                           dir="rtl">
+                    <p class="text-xs text-gray-500 mt-1" dir="rtl">اكتب العلامات مفصولة بفواصل</p>
+                </div>
+
+                <!-- Created By -->
+                <div class="{{ 'md:col-span-2' if not plan else 'md:col-span-1' }}">
+                    <label for="created_by" class="block text-sm font-medium text-gray-700 mb-2" dir="rtl">منشئ الخطة</label>
+                    <input type="text" 
+                           id="created_by" 
+                           name="created_by" 
+                           value="{{ plan.created_by if plan else 'مجهول' }}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                           placeholder="اسم منشئ الخطة"
+                           dir="rtl">
+                </div>
+            </div>
+
+
+
+            <!-- Submit Buttons -->
+            <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200">
+                <button type="submit" 
+                        class="flex-1 sm:flex-none bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200">
+                    {{ '💾 حفظ التعديلات' if plan else '➕ إنشاء الخطة' }}
+                </button>
+                
+                <a href="{{ url_for('monthly_plans') }}" 
+                   class="flex-1 sm:flex-none bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-medium text-center transition-colors duration-200">
+                    ❌ إلغاء
+                </a>
+                
+                {% if plan %}
+                <a href="{{ url_for('edit_monthly_plan', plan_id=plan.id) }}" 
+                   class="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium text-center transition-colors duration-200">
+                    📝 إدارة المعالم
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Tips Section -->
+    <div class="mt-6 bg-cyan-50 border border-cyan-200 rounded-lg p-4">
+        <h3 class="text-lg font-semibold text-cyan-950 mb-3" dir="rtl">💡 نصائح لخطة شهرية فعالة</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-cyan-800">
+            <div dir="rtl">
+                <strong>🎯 أهداف واضحة:</strong> أضف 3-7 أهداف محددة وقابلة للقياس
+            </div>
+            <div dir="rtl">
+                <strong>⏰ مواعيد نهائية:</strong> ضع تواريخ مستهدفة لكل هدف
+            </div>
+            <div dir="rtl">
+                <strong>📊 تتبع التقدم:</strong> راجع أهدافك أسبوعياً وحدث حالتها
+            </div>
+            <div dir="rtl">
+                <strong>🔄 مرونة:</strong> يمكنك إضافة أو تعديل الأهداف خلال الشهر
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Set current month and year as default for new plans
+document.addEventListener('DOMContentLoaded', function() {
+    {% if not plan %}
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+    
+    document.getElementById('month').value = currentMonth;
+    document.getElementById('year').value = currentYear;
+    {% endif %}
+});
+</script>
+{% endblock %}

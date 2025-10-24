@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}{% if story %}Edit Story{% else %}New Story{% endif %} - Backlog{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl" dir="ltr">
+    <div class="bg-white rounded-lg shadow-lg p-8">
+        <h2 class="text-3xl font-bold text-cyan-950 mb-2">
+            {% if story %}✏️ Edit Story{% else %}➕ New Story{% endif %}
+        </h2>
+        <p class="text-gray-600 mb-6">Phase: {{ phase.name }} | Project: {{ phase.project.name }}</p>
+
+        <form method="POST" action="{% if return_phase %}?return_phase={{ return_phase }}{% endif %}" class="space-y-6">
+            <!-- Story ID -->
+            <div>
+                <label class="block text-gray-700 font-semibold mb-2">Story ID *</label>
+                <input type="text" name="story_id" required
+                       value="{{ story.story_id if story else '' }}"
+                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent"
+                       placeholder="US-001">
+                <p class="text-sm text-gray-500 mt-1">Example: US-001, US-100</p>
+            </div>
+
+            <!-- Title -->
+            <div>
+                <label class="block text-gray-700 font-semibold mb-2">Title *</label>
+                <input type="text" name="title" required
+                       value="{{ story.title if story else '' }}"
+                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent"
+                       placeholder="Enhanced Guest Form">
+            </div>
+
+            <!-- Title Arabic -->
+            <div>
+                <label class="block text-gray-700 font-semibold mb-2">Title (Arabic - Optional)</label>
+                <input type="text" name="title_arabic"
+                       value="{{ story.title_arabic if story else '' }}"
+                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent"
+                       placeholder="العنوان بالعربية">
+            </div>
+
+            <!-- User Story Format -->
+            <div class="bg-blue-50 rounded-lg p-4 space-y-3">
+                <h3 class="font-bold text-gray-800 mb-3">📝 User Story Format</h3>
+                
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2 text-sm">As a (User Role)</label>
+                    <input type="text" name="user_role"
+                           value="{{ story.user_role if story else '' }}"
+                           class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent"
+                           placeholder="guest">
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2 text-sm">I want to (Goal)</label>
+                    <input type="text" name="user_goal"
+                           value="{{ story.user_goal if story else '' }}"
+                           class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent"
+                           placeholder="provide my mobile number and select a support type">
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2 text-sm">So I can (Benefit)</label>
+                    <input type="text" name="user_benefit"
+                           value="{{ story.user_benefit if story else '' }}"
+                           class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent"
+                           placeholder="be routed properly">
+                </div>
+            </div>
+
+            <!-- Description -->
+            <div>
+                <label class="block text-gray-700 font-semibold mb-2">Description</label>
+                <textarea name="description" rows="4"
+                          class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent"
+                          placeholder="Detailed description...">{{ story.description if story else '' }}</textarea>
+            </div>
+
+            <!-- Priority, Complexity, Status -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Priority</label>
+                    <select name="priority" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent">
+                        <option value="high" {% if story and story.priority == 'high' %}selected{% endif %}>High</option>
+                        <option value="medium" {% if story and story.priority == 'medium' %}selected{% endif %}>Medium</option>
+                        <option value="low" {% if story and story.priority == 'low' %}selected{% endif %}>Low</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Complexity</label>
+                    <select name="complexity" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent">
+                        <option value="high" {% if story and story.complexity == 'high' %}selected{% endif %}>High</option>
+                        <option value="medium" {% if story and story.complexity == 'medium' %}selected{% endif %}>Medium</option>
+                        <option value="low" {% if story and story.complexity == 'low' %}selected{% endif %}>Low</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Status</label>
+                    <select name="status" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent">
+                        <option value="pending" {% if story and story.status == 'pending' %}selected{% endif %}>Pending</option>
+                        <option value="in_progress" {% if story and story.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                        <option value="completed" {% if story and story.status == 'completed' %}selected{% endif %}>Completed</option>
+                        <option value="blocked" {% if story and story.status == 'blocked' %}selected{% endif %}>Blocked</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Acceptance Criteria -->
+            {% if not story %}
+            <div class="border-t pt-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-gray-800">✓ Acceptance Criteria</h3>
+                    <button type="button" onclick="addCriteriaField()" class="text-cyan-950 hover:underline text-sm">
+                        ➕ Add Criterion
+                    </button>
+                </div>
+                <div id="criteria-container" class="space-y-2">
+                    <input type="text" name="ac_description[]" 
+                           class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent text-sm"
+                           placeholder="Acceptance criterion 1">
+                </div>
+                <p class="text-sm text-gray-500 mt-2">You can add criteria here or later on the story details page</p>
+            </div>
+            {% endif %}
+
+            <!-- Technical Notes -->
+            <div>
+                <label class="block text-gray-700 font-semibold mb-2">⚙️ Technical Notes</label>
+                <textarea name="technical_notes" rows="4"
+                          class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent"
+                          placeholder="Technical notes, implementation details...">{{ story.technical_notes if story else '' }}</textarea>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex space-x-4 pt-4">
+                <button type="submit" class="flex-1 bg-cyan-950 text-white py-3 px-6 rounded-lg hover:bg-cyan-900 transition font-semibold">
+                    💾 Save
+                </button>
+                <a href="{% if return_phase and story %}{{ url_for('backlog_project', project_id=phase.project_id, phase_id=return_phase, story_id=story.id) }}{% elif return_phase %}{{ url_for('backlog_project', project_id=phase.project_id, phase_id=return_phase) }}{% elif story %}{{ url_for('backlog_story', story_id=story.id) }}{% else %}{{ url_for('backlog_project', project_id=phase.project_id) }}{% endif %}" 
+                   class="flex-1 bg-gray-200 text-gray-700 py-3 px-6 rounded-lg hover:bg-gray-300 transition text-center font-semibold">
+                    ❌ Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function addCriteriaField() {
+    const container = document.getElementById('criteria-container');
+    const count = container.children.length + 1;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.name = 'ac_description[]';
+    input.className = 'w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent text-sm';
+    input.placeholder = `Acceptance criterion ${count}`;
+    container.appendChild(input);
+}
+</script>
+{% endblock %}

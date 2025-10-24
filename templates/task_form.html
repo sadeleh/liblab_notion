@@ -1,16 +1,20 @@
 {% extends "base.html" %}
 
-{% block title %}مهمة جديدة - مركز تخطيط الفريق{% endblock %}
+{% block title %}{{ 'تعديل المهمة' if task else 'مهمة جديدة' }} - مركز تخطيط الفريق{% endblock %}
 
 {% block content %}
 <header class="text-center mb-8">
-    <h1 class="text-3xl md:text-4xl font-bold text-cyan-950">إنشاء مهمة جديدة</h1>
-    <p class="text-lg text-gray-600 mt-2">أضف مهمة جديدة إلى سير عمل فريقك</p>
+    <h1 class="text-3xl md:text-4xl font-bold text-cyan-950">{{ 'تعديل المهمة' if task else 'إنشاء مهمة جديدة' }}</h1>
+    <p class="text-lg text-gray-600 mt-2">{{ 'قم بتحديث تفاصيل المهمة' if task else 'أضف مهمة جديدة إلى سير عمل فريقك' }}</p>
 </header>
 
 <div class="max-w-2xl mx-auto">
     <div class="bg-white p-8 rounded-xl shadow-lg">
         <form method="POST" class="space-y-6">
+            {% if task %}
+                <input type="hidden" name="original_status" value="{{ task.status }}">
+            {% endif %}
+            
             <!-- Title -->
             <div>
                 <label for="title" class="block text-sm font-medium text-gray-700 mb-2">
@@ -20,6 +24,7 @@
                        id="title" 
                        name="title" 
                        required
+                       value="{{ task.title if task else '' }}"
                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                        placeholder="أدخل عنوان المهمة">
             </div>
@@ -33,11 +38,25 @@
                          name="description" 
                          rows="4"
                          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                         placeholder="صف المهمة بالتفصيل"></textarea>
+                         placeholder="صف المهمة بالتفصيل">{{ task.description if task else '' }}</textarea>
             </div>
 
-            <!-- Priority and Category Row -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Tags -->
+            <div>
+                <label for="tags" class="block text-sm font-medium text-gray-700 mb-2">
+                    العلامات (Tags)
+                </label>
+                <input type="text" 
+                       id="tags" 
+                       name="tags" 
+                       value="{{ task.tags if task else '' }}"
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                       placeholder="أدخل العلامات مفصولة بفواصل، مثال: مهم، عاجل، تطوير">
+                <p class="text-xs text-gray-500 mt-1">استخدم الفواصل لفصل العلامات</p>
+            </div>
+
+            <!-- Priority, Category, and Status Row -->
+            <div class="grid grid-cols-1 md:grid-cols-{{ '3' if task else '2' }} gap-6">
                 <!-- Priority -->
                 <div>
                     <label for="priority" class="block text-sm font-medium text-gray-700 mb-2">
@@ -46,9 +65,9 @@
                     <select id="priority" 
                             name="priority"
                             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent">
-                        <option value="low">🟢 منخفضة</option>
-                        <option value="medium" selected>🟡 متوسطة</option>
-                        <option value="high">🔴 عالية</option>
+                        <option value="low" {{ 'selected' if task and task.priority == 'low' else '' }}>🟢 منخفضة</option>
+                        <option value="medium" {{ 'selected' if (task and task.priority == 'medium') or not task else '' }}>🟡 متوسطة</option>
+                        <option value="high" {{ 'selected' if task and task.priority == 'high' else '' }}>🔴 عالية</option>
                     </select>
                 </div>
 
@@ -60,10 +79,26 @@
                     <input type="text" 
                            id="category" 
                            name="category" 
-                           value="general"
+                           value="{{ task.category if task else 'general' }}"
                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                            placeholder="مثال: تطوير، تسويق، بحث">
                 </div>
+
+                <!-- Status (only when editing) -->
+                {% if task %}
+                <div>
+                    <label for="status" class="block text-sm font-medium text-gray-700 mb-2">
+                        الحالة
+                    </label>
+                    <select id="status" 
+                            name="status"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent">
+                        <option value="pending" {{ 'selected' if task.status == 'pending' else '' }}>🟡 معلقة</option>
+                        <option value="in_progress" {{ 'selected' if task.status == 'in_progress' else '' }}>🔵 قيد التنفيذ</option>
+                        <option value="completed" {{ 'selected' if task.status == 'completed' else '' }}>🟢 مكتملة</option>
+                    </select>
+                </div>
+                {% endif %}
             </div>
 
             <!-- Assigned To and Due Date Row -->
@@ -76,6 +111,7 @@
                     <input type="text" 
                            id="assigned_to" 
                            name="assigned_to"
+                           value="{{ task.assigned_to if task else '' }}"
                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                            placeholder="اسم عضو الفريق">
                 </div>
@@ -88,6 +124,7 @@
                     <input type="date" 
                            id="due_date" 
                            name="due_date"
+                           value="{{ task.due_date.strftime('%Y-%m-%d') if task and task.due_date else '' }}"
                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent">
                 </div>
             </div>
@@ -96,13 +133,24 @@
             <div class="flex space-x-4 space-x-reverse pt-6">
                 <button type="submit" 
                         class="flex-1 bg-cyan-950 text-white font-bold py-3 px-6 rounded-lg hover:bg-cyan-800 transition-colors">
-                    <span class="text-xl ml-2">✅</span>إنشاء المهمة
+                    <span class="text-xl ml-2">{{ '💾' if task else '✅' }}</span>{{ 'حفظ التغييرات' if task else 'إنشاء المهمة' }}
                 </button>
                 <a href="{{ url_for('tasks') }}" 
                    class="flex-1 text-center bg-gray-200 text-gray-700 font-bold py-3 px-6 rounded-lg hover:bg-gray-300 transition-colors">
                     إلغاء
                 </a>
             </div>
+
+            <!-- Delete Button (only when editing) -->
+            {% if task %}
+            <div class="pt-4 border-t border-gray-200">
+                <button type="button" 
+                        onclick="confirmDelete()"
+                        class="w-full bg-red-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-red-700 transition-colors">
+                    <span class="text-xl ml-2">🗑️</span>حذف المهمة
+                </button>
+            </div>
+            {% endif %}
         </form>
     </div>
 
@@ -114,7 +162,26 @@
             <li>• قدم تفاصيل كافية في الوصف لتوضيح السياق</li>
             <li>• حدد تواريخ استحقاق واقعية للحفاظ على زخم الفريق</li>
             <li>• استخدم الفئات لتنظيم المهام ذات الصلة</li>
+            <li>• أضف علامات (tags) لتسهيل البحث والتصفية</li>
+            {% if task %}
+            <li>• يمكنك تغيير حالة المهمة مباشرة من هنا</li>
+            {% endif %}
         </ul>
     </div>
 </div>
+
+{% if task %}
+<script>
+function confirmDelete() {
+    if (confirm('هل أنت متأكد من حذف هذه المهمة؟ لا يمكن التراجع عن هذا الإجراء.')) {
+        // Create a form to submit the delete request
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("delete_task", task_id=task.id) }}';
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endif %}
 {% endblock %} 

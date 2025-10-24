@@ -1,0 +1,380 @@
+{% extends "base.html" %}
+
+{% block title %}{{ monthly_plan.title }} - {{ monthly_plan.month_name_arabic }} {{ monthly_plan.year }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6 max-w-6xl">
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-cyan-50 to-blue-50 rounded-lg p-6 mb-6 border border-cyan-200">
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div class="flex-1">
+                <div class="flex items-center gap-3 mb-2">
+                    <h1 class="text-2xl sm:text-3xl font-bold text-cyan-950" dir="rtl">{{ monthly_plan.title }}</h1>
+                    {% if monthly_plan.is_current_month %}
+                    <span class="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-medium">الشهر الحالي</span>
+                    {% endif %}
+                </div>
+                <div class="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                    <span dir="rtl">📅 {{ monthly_plan.month_name_arabic }} {{ monthly_plan.year }}</span>
+                    <span class="px-2 py-1 rounded {{ 
+                        'bg-green-100 text-green-800' if monthly_plan.status == 'completed' else
+                        'bg-blue-100 text-blue-800' if monthly_plan.status == 'active' else
+                        'bg-gray-100 text-gray-800'
+                    }}">
+                        {{ 'مكتمل' if monthly_plan.status == 'completed' else 'نشط' if monthly_plan.status == 'active' else 'مؤرشف' }}
+                    </span>
+                    <span class="px-2 py-1 rounded {{ 
+                        'bg-red-100 text-red-700' if monthly_plan.priority == 'high' else
+                        'bg-yellow-100 text-yellow-700' if monthly_plan.priority == 'medium' else
+                        'bg-green-100 text-green-700'
+                    }}">
+                        {{ 'عالي' if monthly_plan.priority == 'high' else 'متوسط' if monthly_plan.priority == 'medium' else 'منخفض' }}
+                    </span>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <a href="{{ url_for('monthly_plans') }}" 
+                   class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
+                    ← العودة للقائمة
+                </a>
+                <a href="{{ url_for('update_monthly_plan', plan_id=monthly_plan.id) }}" 
+                   class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
+                    ⚙️ تعديل الخطة
+                </a>
+                <button onclick="deletePlan({{ monthly_plan.id }})" 
+                        class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
+                    🗑️ حذف الخطة
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Plan Details -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4" dir="rtl">📋 تفاصيل الخطة</h2>
+                
+                <!-- Progress Circle -->
+                <div class="text-center mb-6">
+                    <div class="relative inline-flex items-center justify-center w-24 h-24">
+                        <svg class="w-24 h-24 transform -rotate-90" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="40" stroke="#e5e7eb" stroke-width="8" fill="none"/>
+                            <circle cx="50" cy="50" r="40" 
+                                    stroke="url(#gradient)" 
+                                    stroke-width="8" 
+                                    fill="none"
+                                    stroke-dasharray="{{ (monthly_plan.progress_percentage * 251.2) / 100 }} 251.2"
+                                    stroke-linecap="round"/>
+                            <defs>
+                                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color:#0891b2"/>
+                                    <stop offset="100%" style="stop-color:#3b82f6"/>
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <span class="text-xl font-bold text-gray-900">{{ monthly_plan.progress_percentage }}%</span>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600 mt-2" dir="rtl">نسبة الإنجاز</p>
+                </div>
+
+
+
+                <div class="space-y-3 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600" dir="rtl">الفئة:</span>
+                        <span class="font-medium">{{ monthly_plan.category }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600" dir="rtl">منشئ الخطة:</span>
+                        <span class="font-medium">{{ monthly_plan.created_by or 'مجهول' }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600" dir="rtl">تاريخ الإنشاء:</span>
+                        <span class="font-medium">{{ monthly_plan.created_at.strftime('%Y-%m-%d') }}</span>
+                    </div>
+                    {% if monthly_plan.completed_at %}
+                    <div class="flex justify-between">
+                        <span class="text-gray-600" dir="rtl">تاريخ الإكمال:</span>
+                        <span class="font-medium text-green-600">{{ monthly_plan.completed_at.strftime('%Y-%m-%d') }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if monthly_plan.tags %}
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                    <h3 class="text-sm font-medium text-gray-700 mb-2" dir="rtl">العلامات</h3>
+                    <div class="flex flex-wrap gap-1">
+                        {% for tag in monthly_plan.tags.split(',') %}
+                        {% if tag.strip() %}
+                        <span class="inline-block text-xs px-2 py-1 bg-cyan-100 text-cyan-700 rounded">#{{ tag.strip() }}</span>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Goals -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-lg font-semibold text-gray-900" dir="rtl">🎯 الأهداف الشهرية</h2>
+                    <button onclick="showAddGoalModal()" 
+                            class="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
+                        ➕ إضافة هدف
+                    </button>
+                </div>
+
+                {% if goals %}
+                <div class="space-y-4">
+                    {% for goal in goals %}
+                    <div class="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow duration-200">
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <button onclick="updateGoalStatus({{ goal.id }}, '{{ 'pending' if goal.status == 'completed' else 'completed' }}')"
+                                            class="flex-shrink-0 w-5 h-5 rounded-full border-2 {{ 
+                                                'bg-green-500 border-green-500' if goal.status == 'completed' else
+                                                'bg-yellow-500 border-yellow-500' if goal.status == 'in_progress' else
+                                                'border-gray-300 hover:border-cyan-500'
+                                            }} transition-colors duration-200 cursor-pointer">
+                                        {% if goal.status == 'completed' %}
+                                        <svg class="w-3 h-3 text-white m-auto" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        {% endif %}
+                                    </button>
+                                    <h3 class="font-medium text-gray-900 {{ 'line-through text-gray-500' if goal.status == 'completed' else '' }}" dir="rtl">
+                                        {{ goal.title }}
+                                    </h3>
+                                    <span class="text-xs px-2 py-1 rounded {{ 
+                                        'bg-green-100 text-green-800' if goal.status == 'completed' else
+                                        'bg-yellow-100 text-yellow-800' if goal.status == 'in_progress' else
+                                        'bg-gray-100 text-gray-800'
+                                    }}">
+                                        {{ 'مكتمل' if goal.status == 'completed' else 'قيد التنفيذ' if goal.status == 'in_progress' else 'معلق' }}
+                                    </span>
+                                </div>
+                                
+                                <div class="flex flex-wrap items-center gap-4 text-xs text-gray-500 mr-8">
+                                    {% if goal.target_date %}
+                                    <span class="{{ 'text-red-500' if goal.is_overdue else '' }}" dir="rtl">
+                                        📅 {{ goal.target_date.strftime('%Y-%m-%d') }}
+                                        {% if goal.is_overdue %}
+                                        (متأخر)
+                                        {% elif goal.days_until_target is not none %}
+                                        ({{ goal.days_until_target }} يوم متبقي)
+                                        {% endif %}
+                                    </span>
+                                    {% endif %}
+                                    <span class="px-2 py-1 rounded {{ 
+                                        'bg-red-100 text-red-700' if goal.priority == 'high' else
+                                        'bg-yellow-100 text-yellow-700' if goal.priority == 'medium' else
+                                        'bg-green-100 text-green-700'
+                                    }}">
+                                        {{ 'عالي' if goal.priority == 'high' else 'متوسط' if goal.priority == 'medium' else 'منخفض' }}
+                                    </span>
+                                    {% if goal.completed_at %}
+                                    <span class="text-green-600" dir="rtl">✅ مكتمل في {{ goal.completed_at.strftime('%Y-%m-%d') }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="flex gap-2">
+                                <button onclick="updateGoalStatus({{ goal.id }}, 'in_progress')" 
+                                        class="text-yellow-600 hover:text-yellow-800 text-sm"
+                                        title="تحديد كقيد التنفيذ">
+                                    ⏳
+                                </button>
+                                <button onclick="deleteGoal({{ goal.id }})" 
+                                        class="text-red-600 hover:text-red-800 text-sm"
+                                        title="حذف الهدف">
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-8">
+                    <div class="text-4xl mb-3">🎯</div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2" dir="rtl">لا توجد أهداف بعد</h3>
+                    <p class="text-gray-600 mb-4" dir="rtl">ابدأ بإضافة أهداف لهذه الخطة الشهرية</p>
+                    <button onclick="showAddGoalModal()" 
+                            class="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
+                        ➕ إضافة أول هدف
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Goal Modal -->
+<div id="addGoalModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg max-w-md w-full p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4" dir="rtl">➕ إضافة هدف جديد</h3>
+        
+        <form id="addGoalForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1" dir="rtl">عنوان الهدف *</label>
+                <input type="text" 
+                       id="goalTitle" 
+                       required 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                       placeholder="مثال: إنهاء دورة البرمجة"
+                       dir="rtl">
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1" dir="rtl">التاريخ المستهدف</label>
+                    <input type="date" 
+                           id="goalTargetDate" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1" dir="rtl">الأولوية</label>
+                    <select id="goalPriority" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                        <option value="low">منخفض</option>
+                        <option value="medium" selected>متوسط</option>
+                        <option value="high">عالي</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="flex gap-3 pt-4">
+                <button type="submit" 
+                        class="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
+                    ➕ إضافة الهدف
+                </button>
+                <button type="button" 
+                        onclick="hideAddGoalModal()" 
+                        class="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
+                    إلغاء
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function showAddGoalModal() {
+    document.getElementById('addGoalModal').classList.remove('hidden');
+}
+
+function hideAddGoalModal() {
+    document.getElementById('addGoalModal').classList.add('hidden');
+    document.getElementById('addGoalForm').reset();
+}
+
+document.getElementById('addGoalForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = {
+        title: document.getElementById('goalTitle').value,
+        target_date: document.getElementById('goalTargetDate').value,
+        priority: document.getElementById('goalPriority').value
+    };
+    
+    fetch(`/api/monthly_plans/{{ monthly_plan.id }}/goals`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('حدث خطأ: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('حدث خطأ في الاتصال');
+    });
+});
+
+function updateGoalStatus(goalId, newStatus) {
+    fetch(`/api/goals/${goalId}/update_status?status=${newStatus}`, {
+        method: 'GET'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('حدث خطأ: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('حدث خطأ في الاتصال');
+    });
+}
+
+function deleteGoal(goalId) {
+    if (confirm('هل أنت متأكد من حذف هذا الهدف؟')) {
+        fetch(`/api/goals/${goalId}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('حدث خطأ: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('حدث خطأ في الاتصال');
+        });
+    }
+}
+
+function deletePlan(planId) {
+    if (confirm('هل أنت متأكد من حذف هذه الخطة الشهرية؟ سيتم حذف جميع الأهداف المرتبطة بها أيضاً.')) {
+        fetch(`/api/monthly_plans/${planId}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = '{{ url_for("monthly_plans") }}';
+            } else {
+                alert('حدث خطأ: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('حدث خطأ في الاتصال');
+        });
+    }
+}
+
+// Close modal when clicking outside
+document.getElementById('addGoalModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        hideAddGoalModal();
+    }
+});
+</script>
+{% endblock %}

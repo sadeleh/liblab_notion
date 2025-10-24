@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}Backlog - Project Management{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8" dir="ltr">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h2 class="text-4xl font-bold text-cyan-950 mb-2">📊 Backlog</h2>
+            <p class="text-gray-600">Manage projects and user stories</p>
+        </div>
+        <div class="flex items-center space-x-3">
+            <!-- Import Button -->
+            <button onclick="document.getElementById('importModal').classList.remove('hidden')"
+                    class="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
+                    title="Import backlog from JSON file">
+                <span class="text-xl">📥</span>
+                <span>Import</span>
+            </button>
+            
+            <!-- Template Button -->
+            <a href="{{ url_for('backlog_template') }}" 
+               class="bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition flex items-center space-x-2"
+               title="Download JSON template">
+                <span class="text-xl">📋</span>
+                <span>Template</span>
+            </a>
+            
+            <!-- New Project Button -->
+            <a href="{{ url_for('backlog_project_add') }}" 
+               class="bg-cyan-950 text-white px-6 py-3 rounded-lg hover:bg-cyan-900 transition flex items-center space-x-2">
+                <span class="text-xl">➕</span>
+                <span>New Project</span>
+            </a>
+        </div>
+    </div>
+
+    {% if projects %}
+        <!-- Projects Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for project in projects %}
+            <div class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border-t-4 
+                {% if project.priority == 'high' %}border-red-500
+                {% elif project.priority == 'medium' %}border-yellow-500
+                {% else %}border-green-500{% endif %}">
+                
+                <div class="p-6">
+                    <!-- Project Header -->
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex-1">
+                            <h3 class="text-xl font-bold text-gray-800 mb-2">{{ project.name }}</h3>
+                            <p class="text-sm text-gray-500 mb-3">{{ project.description[:100] if project.description else 'No description' }}</p>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold ml-2
+                            {% if project.status == 'completed' %}bg-green-100 text-green-800
+                            {% elif project.status == 'active' %}bg-blue-100 text-blue-800
+                            {% else %}bg-gray-100 text-gray-800{% endif %}">
+                            {{ project.status|title }}
+                        </span>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="bg-gray-50 rounded-lg p-3 text-center">
+                            <div class="text-2xl font-bold text-cyan-950">{{ project.phases|length }}</div>
+                            <div class="text-xs text-gray-600">Phases</div>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-3 text-center">
+                            <div class="text-2xl font-bold text-cyan-950">{{ project.total_stories }}</div>
+                            <div class="text-xs text-gray-600">Stories</div>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    {% if project.total_stories > 0 %}
+                    <div class="mb-4">
+                        <div class="flex justify-between text-xs text-gray-600 mb-1">
+                            <span>Progress</span>
+                            <span>{{ ((project.completed_stories / project.total_stories) * 100)|int }}%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-cyan-950 h-2 rounded-full" style="width: {{ ((project.completed_stories / project.total_stories) * 100)|int }}%"></div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Dates -->
+                    {% if project.start_date or project.end_date %}
+                    <div class="text-xs text-gray-500 mb-4">
+                        {% if project.start_date %}<span>📅 Start: {{ project.start_date.strftime('%Y-%m-%d') }}</span>{% endif %}
+                        {% if project.end_date %}<span class="ml-2">⏰ End: {{ project.end_date.strftime('%Y-%m-%d') }}</span>{% endif %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Actions -->
+                    <div class="flex space-x-2">
+                        <a href="{{ url_for('backlog_project', project_id=project.id) }}" 
+                           class="flex-1 bg-cyan-950 text-white py-2 px-4 rounded-lg hover:bg-cyan-900 transition text-center text-sm">
+                            View Details
+                        </a>
+                        <a href="{{ url_for('backlog_project_edit', project_id=project.id) }}" 
+                           class="bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition text-sm">
+                            Edit
+                        </a>
+                        <form method="POST" action="{{ url_for('backlog_project_delete', project_id=project.id) }}" 
+                              onsubmit="return confirm('Are you sure you want to delete this project?')" class="inline">
+                            <button type="submit" class="bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition text-sm">
+                                Delete
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-16">
+            <div class="text-6xl mb-4">📊</div>
+            <h3 class="text-2xl font-bold text-gray-800 mb-2">No projects yet</h3>
+            <p class="text-gray-600 mb-6">Create your first project to start managing your backlog</p>
+            <a href="{{ url_for('backlog_project_add') }}" class="inline-block bg-cyan-950 text-white px-8 py-3 rounded-lg hover:bg-cyan-900 transition">
+                ➕ Create New Project
+            </a>
+        </div>
+    {% endif %}
+    
+    <!-- Import Modal -->
+    <div id="importModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-2xl max-w-lg w-full mx-4">
+            <div class="flex justify-between items-center p-6 border-b">
+                <h3 class="text-2xl font-bold text-gray-800">📥 Import Backlog</h3>
+                <button onclick="document.getElementById('importModal').classList.add('hidden')" 
+                        class="text-gray-500 hover:text-gray-700 text-2xl">
+                    ✕
+                </button>
+            </div>
+            
+            <form method="POST" action="{{ url_for('backlog_import') }}" enctype="multipart/form-data" class="p-6">
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">
+                        Select JSON File
+                    </label>
+                    <input type="file" 
+                           name="json_file" 
+                           accept=".json"
+                           required
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-950">
+                    <p class="text-xs text-gray-500 mt-2">
+                        Upload a JSON file containing backlog data. The file should follow the template structure.
+                    </p>
+                </div>
+                
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <span class="text-blue-500 text-xl">ℹ️</span>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-blue-700">
+                                Need a template? <a href="{{ url_for('backlog_template') }}" class="font-bold underline">Download the JSON template</a> to see the correct format.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex space-x-3">
+                    <button type="submit" 
+                            class="flex-1 bg-cyan-950 text-white py-3 px-6 rounded-lg hover:bg-cyan-900 transition font-semibold">
+                        Import
+                    </button>
+                    <button type="button" 
+                            onclick="document.getElementById('importModal').classList.add('hidden')"
+                            class="flex-1 bg-gray-300 text-gray-700 py-3 px-6 rounded-lg hover:bg-gray-400 transition font-semibold">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

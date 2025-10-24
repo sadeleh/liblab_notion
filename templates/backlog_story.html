@@ -1,0 +1,392 @@
+{% extends "base.html" %}
+
+{% block title %}{{ story.story_id }}: {{ story.title }} - Backlog{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-5xl" dir="ltr">
+    <!-- Header -->
+    <div class="mb-8">
+        <a href="{% if return_phase %}{{ url_for('backlog_project', project_id=story.phase.project_id, phase_id=return_phase, story_id=story.id) }}{% else %}{{ url_for('backlog_project', project_id=story.phase.project_id) }}{% endif %}" class="text-cyan-950 hover:underline text-sm mb-2 inline-block">
+            ← Back to Project: {{ story.phase.project.name }}
+        </a>
+        
+        <div class="flex justify-between items-start mb-4">
+            <div class="flex-1">
+                <div class="flex items-center space-x-3 mb-3">
+                    <span class="text-lg font-mono bg-gray-100 px-3 py-1 rounded">{{ story.story_id }}</span>
+                    <span class="px-3 py-1 rounded-full text-sm font-semibold
+                        {% if story.status == 'completed' %}bg-green-100 text-green-800
+                        {% elif story.status == 'in_progress' %}bg-blue-100 text-blue-800
+                        {% elif story.status == 'blocked' %}bg-red-100 text-red-800
+                        {% else %}bg-gray-100 text-gray-800{% endif %}">
+                        {% if story.status == 'completed' %}✅ Completed
+                        {% elif story.status == 'in_progress' %}🔄 In Progress
+                        {% elif story.status == 'blocked' %}🚫 Blocked
+                        {% else %}⏳ Pending{% endif %}
+                    </span>
+                </div>
+                <h2 class="text-3xl font-bold text-gray-800 mb-2">{{ story.title }}</h2>
+            </div>
+            <div class="flex space-x-2">
+                <a href="{% if return_phase %}{{ url_for('backlog_story_edit', story_id=story.id, return_phase=return_phase) }}{% else %}{{ url_for('backlog_story_edit', story_id=story.id) }}{% endif %}" class="bg-cyan-950 text-white px-4 py-2 rounded-lg hover:bg-cyan-900 transition">
+                    ✏️ Edit Story
+                </a>
+                <form method="POST" action="{{ url_for('backlog_story_delete', story_id=story.id) }}" 
+                      onsubmit="return confirm('Are you sure you want to delete this story and all its acceptance criteria and notes?')" class="inline">
+                    <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition">
+                        🗑️ Delete Story
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Phase Badge -->
+        <div class="mb-4">
+            <span class="bg-cyan-100 text-cyan-900 px-3 py-1 rounded-full text-sm">
+                📦 {{ story.phase.name }}
+            </span>
+        </div>
+
+        <!-- Story Metadata -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white rounded-lg shadow p-4">
+                <div class="text-sm text-gray-600 mb-1">Priority</div>
+                <div class="text-lg font-semibold
+                    {% if story.priority == 'high' %}text-red-600
+                    {% elif story.priority == 'medium' %}text-yellow-600
+                    {% else %}text-green-600{% endif %}">
+                    {{ story.priority|title }}
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-4">
+                <div class="text-sm text-gray-600 mb-1">Complexity</div>
+                <div class="text-lg font-semibold
+                    {% if story.complexity == 'high' %}text-purple-600
+                    {% elif story.complexity == 'medium' %}text-blue-600
+                    {% else %}text-gray-600{% endif %}">
+                    {{ story.complexity|title }}
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-4">
+                <div class="text-sm text-gray-600 mb-1">Progress</div>
+                <div class="text-lg font-semibold text-cyan-950">{{ story.completion_percentage }}%</div>
+                <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                    <div class="bg-cyan-950 h-2 rounded-full transition-all" style="width: {{ story.completion_percentage }}%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Story Format -->
+    {% if story.user_role or story.user_goal or story.user_benefit %}
+    <div class="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-6 mb-6">
+        <h3 class="font-bold text-lg mb-3 text-gray-800">📝 User Story</h3>
+        <div class="space-y-2 text-gray-700">
+            {% if story.user_role %}<p><strong>As a:</strong> {{ story.user_role }}</p>{% endif %}
+            {% if story.user_goal %}<p><strong>I want to:</strong> {{ story.user_goal }}</p>{% endif %}
+            {% if story.user_benefit %}<p><strong>So I can:</strong> {{ story.user_benefit }}</p>{% endif %}
+        </div>
+    </div>
+    {% elif story.description %}
+    <div class="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-6 mb-6">
+        <h3 class="font-bold text-lg mb-3 text-gray-800">📝 User Story</h3>
+        <div class="text-gray-700">
+            <p class="italic">{{ story.description }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Acceptance Criteria -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-lg text-gray-800">✓ Acceptance Criteria</h3>
+            <button onclick="showAddCriteriaForm()" class="text-cyan-950 hover:underline text-sm">
+                ➕ Add Criterion
+            </button>
+        </div>
+
+        <!-- Add Criteria Form (Hidden by default) -->
+        <div id="add-criteria-form" class="hidden mb-4 p-4 bg-gray-50 rounded-lg">
+            <textarea id="criteria-description" class="w-full p-2 border rounded-lg mb-2" rows="2" placeholder="Enter acceptance criterion..."></textarea>
+            <div class="flex space-x-2">
+                <button onclick="addCriteria()" class="bg-cyan-950 text-white px-4 py-2 rounded-lg hover:bg-cyan-900 text-sm">
+                    Add
+                </button>
+                <button onclick="hideAddCriteriaForm()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 text-sm">
+                    Cancel
+                </button>
+            </div>
+        </div>
+
+        {% if story.acceptance_criteria|length > 0 %}
+        <ul class="space-y-3" id="criteria-list">
+            {% for criteria in story.acceptance_criteria|sort(attribute='order_index') %}
+            <li class="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition group" data-criteria-id="{{ criteria.id }}">
+                <input type="checkbox" 
+                       {% if criteria.is_completed %}checked{% endif %}
+                       onchange="toggleCriteria({{ criteria.id }})"
+                       class="mt-1 w-5 h-5 text-cyan-950 rounded focus:ring-cyan-950 cursor-pointer">
+                
+                <!-- Display mode -->
+                <div class="flex-1 criteria-display-{{ criteria.id }}">
+                    <span class="{% if criteria.is_completed %}line-through text-gray-500{% else %}text-gray-700{% endif %}">
+                        {{ criteria.description }}
+                    </span>
+                </div>
+                
+                <!-- Edit mode (hidden by default) -->
+                <div class="flex-1 criteria-edit-{{ criteria.id }} hidden">
+                    <textarea class="w-full p-2 border rounded-lg text-sm" id="criteria-edit-text-{{ criteria.id }}" rows="2">{{ criteria.description }}</textarea>
+                    <div class="flex space-x-2 mt-2">
+                        <button onclick="saveCriteria({{ criteria.id }})" class="bg-cyan-950 text-white px-3 py-1 rounded text-xs hover:bg-cyan-900">
+                            Save
+                        </button>
+                        <button onclick="cancelEditCriteria({{ criteria.id }})" class="bg-gray-200 text-gray-700 px-3 py-1 rounded text-xs hover:bg-gray-300">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-2">
+                    {% if criteria.completed_at %}
+                    <span class="text-xs text-gray-400">✓ {{ criteria.completed_at.strftime('%Y-%m-%d') }}</span>
+                    {% endif %}
+                    
+                    <!-- Action buttons (show on hover) -->
+                    <button onclick="editCriteria({{ criteria.id }})" class="text-blue-600 hover:text-blue-800 text-xs opacity-0 group-hover:opacity-100 transition">
+                        ✏️ Edit
+                    </button>
+                    <button onclick="deleteCriteria({{ criteria.id }})" class="text-red-600 hover:text-red-800 text-xs opacity-0 group-hover:opacity-100 transition">
+                        🗑️ Delete
+                    </button>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-gray-500 text-center py-4">No acceptance criteria yet</p>
+        {% endif %}
+    </div>
+
+    <!-- Technical Notes -->
+    {% if story.technical_notes %}
+    <div class="bg-yellow-50 border-l-4 border-yellow-500 rounded-lg p-6 mb-6">
+        <h3 class="font-bold text-lg mb-3 text-gray-800">⚙️ Technical Notes</h3>
+        <div class="text-gray-700 whitespace-pre-wrap">{{ story.technical_notes }}</div>
+    </div>
+    {% endif %}
+
+    <!-- Notes Section -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-lg text-gray-800">💬 Notes</h3>
+            <button onclick="showAddNoteForm()" class="text-cyan-950 hover:underline text-sm">
+                ➕ Add Note
+            </button>
+        </div>
+
+        <!-- Add Note Form (Hidden by default) -->
+        <div id="add-note-form" class="hidden mb-4 p-4 bg-gray-50 rounded-lg">
+            <select id="note-type" class="w-full p-2 border rounded-lg mb-2">
+                <option value="general">General</option>
+                <option value="technical">Technical</option>
+                <option value="design">Design</option>
+                <option value="question">Question</option>
+            </select>
+            <textarea id="note-content" class="w-full p-2 border rounded-lg mb-2" rows="3" placeholder="Enter your note..."></textarea>
+            <div class="flex space-x-2">
+                <button onclick="addNote()" class="bg-cyan-950 text-white px-4 py-2 rounded-lg hover:bg-cyan-900 text-sm">
+                    Add
+                </button>
+                <button onclick="hideAddNoteForm()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 text-sm">
+                    Cancel
+                </button>
+            </div>
+        </div>
+
+        <!-- Notes List -->
+        <div id="notes-list" class="space-y-3">
+            {% if story.notes|length > 0 %}
+                {% for note in story.notes|sort(attribute='created_at', reverse=True) %}
+                <div class="border-l-4 
+                    {% if note.note_type == 'technical' %}border-blue-500 bg-blue-50
+                    {% elif note.note_type == 'design' %}border-purple-500 bg-purple-50
+                    {% elif note.note_type == 'question' %}border-yellow-500 bg-yellow-50
+                    {% else %}border-gray-500 bg-gray-50{% endif %}
+                    rounded-lg p-4" data-note-id="{{ note.id }}">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs font-semibold px-2 py-1 rounded-full
+                                {% if note.note_type == 'technical' %}bg-blue-200 text-blue-800
+                                {% elif note.note_type == 'design' %}bg-purple-200 text-purple-800
+                                {% elif note.note_type == 'question' %}bg-yellow-200 text-yellow-800
+                                {% else %}bg-gray-200 text-gray-800{% endif %}">
+                                {{ note.note_type|title }}
+                            </span>
+                            <span class="text-xs text-gray-500">{{ note.author }} • {{ note.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                        </div>
+                        <button onclick="deleteNote({{ note.id }})" class="text-red-500 hover:text-red-700 text-xs">
+                            🗑️ Delete
+                        </button>
+                    </div>
+                    <p class="text-gray-700 whitespace-pre-wrap">{{ note.content }}</p>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-gray-500 text-center py-4">No notes yet</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+// Acceptance Criteria Functions
+function showAddCriteriaForm() {
+    document.getElementById('add-criteria-form').classList.remove('hidden');
+}
+
+function hideAddCriteriaForm() {
+    document.getElementById('add-criteria-form').classList.add('hidden');
+    document.getElementById('criteria-description').value = '';
+}
+
+function addCriteria() {
+    const description = document.getElementById('criteria-description').value.trim();
+    if (!description) {
+        alert('Please enter criterion description');
+        return;
+    }
+
+    fetch('/backlog/criteria/add/{{ story.id }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({description: description})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function toggleCriteria(criteriaId) {
+    fetch(`/backlog/criteria/${criteriaId}/toggle`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function editCriteria(criteriaId) {
+    // Hide display mode, show edit mode
+    document.querySelector(`.criteria-display-${criteriaId}`).classList.add('hidden');
+    document.querySelector(`.criteria-edit-${criteriaId}`).classList.remove('hidden');
+}
+
+function cancelEditCriteria(criteriaId) {
+    // Show display mode, hide edit mode
+    document.querySelector(`.criteria-display-${criteriaId}`).classList.remove('hidden');
+    document.querySelector(`.criteria-edit-${criteriaId}`).classList.add('hidden');
+}
+
+function saveCriteria(criteriaId) {
+    const newText = document.getElementById(`criteria-edit-text-${criteriaId}`).value.trim();
+    
+    if (!newText) {
+        alert('Criterion description cannot be empty');
+        return;
+    }
+
+    fetch(`/backlog/criteria/${criteriaId}/edit`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({description: newText})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function deleteCriteria(criteriaId) {
+    if (!confirm('Are you sure you want to delete this acceptance criterion?')) {
+        return;
+    }
+
+    fetch(`/backlog/criteria/${criteriaId}/delete`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// Notes Functions
+function showAddNoteForm() {
+    document.getElementById('add-note-form').classList.remove('hidden');
+}
+
+function hideAddNoteForm() {
+    document.getElementById('add-note-form').classList.add('hidden');
+    document.getElementById('note-content').value = '';
+    document.getElementById('note-type').value = 'general';
+}
+
+function addNote() {
+    const content = document.getElementById('note-content').value.trim();
+    const noteType = document.getElementById('note-type').value;
+    
+    if (!content) {
+        alert('Please enter note content');
+        return;
+    }
+
+    fetch('/backlog/note/add/{{ story.id }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({content: content, note_type: noteType})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function deleteNote(noteId) {
+    if (!confirm('Are you sure you want to delete this note?')) {
+        return;
+    }
+
+    fetch(`/backlog/note/${noteId}/delete`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+</script>
+{% endblock %}

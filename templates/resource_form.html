@@ -1,16 +1,18 @@
 {% extends "base.html" %}
 
-{% block title %}إضافة مورد - مركز تخطيط الفريق{% endblock %}
+{% block title %}{{ 'تعديل مورد' if resource else 'إضافة مورد' }} - مركز تخطيط الفريق{% endblock %}
 
 {% block content %}
 <header class="text-center mb-8">
-    <h1 class="text-3xl md:text-4xl font-bold text-cyan-950">إضافة مورد جديد</h1>
+    <h1 class="text-3xl md:text-4xl font-bold text-cyan-950">
+        {{ 'تعديل مورد' if resource else 'إضافة مورد جديد' }}
+    </h1>
     <p class="text-lg text-gray-600 mt-2">شارك المعرفة مع فريقك</p>
 </header>
 
 <div class="max-w-2xl mx-auto">
     <div class="bg-white p-8 rounded-xl shadow-lg">
-        <form method="POST" class="space-y-6">
+        <form method="POST" enctype="multipart/form-data" class="space-y-6">
             <!-- Title -->
             <div>
                 <label for="title" class="block text-sm font-medium text-gray-700 mb-2">
@@ -19,6 +21,7 @@
                 <input type="text" 
                        id="title" 
                        name="title" 
+                       value="{{ resource.title if resource else '' }}"
                        required
                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                        placeholder="أدخل عنوان المورد">
@@ -33,38 +36,106 @@
                          name="description" 
                          rows="4"
                          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                         placeholder="صف ما يتعلق بهذا المورد وكيف يكون مفيداً"></textarea>
+                         placeholder="صف ما يتعلق بهذا المورد وكيف يكون مفيداً">{{ resource.description if resource else '' }}</textarea>
             </div>
 
-            <!-- URL -->
-            <div>
+            <!-- Resource Type Selection -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 class="font-bold text-blue-950 mb-3">📎 نوع المورد</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <input type="radio" id="type_link" name="resource_input_type" value="link" 
+                               {{ 'checked' if not resource or (resource and not resource.filename) else '' }}
+                               class="mr-2" onchange="toggleResourceType()">
+                        <label for="type_link" class="font-medium text-blue-800">🔗 رابط إنترنت</label>
+                        <p class="text-sm text-blue-600 mt-1">مواقع، مقالات، أدوات أونلاين</p>
+                    </div>
+                    <div>
+                        <input type="radio" id="type_file" name="resource_input_type" value="file"
+                               {{ 'checked' if resource and resource.filename else '' }}
+                               class="mr-2" onchange="toggleResourceType()">
+                        <label for="type_file" class="font-medium text-blue-800">📁 رفع ملف</label>
+                        <p class="text-sm text-blue-600 mt-1">مستندات، صور، فيديوهات، ملفات</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- URL Input (for links) -->
+            <div id="url_section" class="{{ 'hidden' if resource and resource.filename else '' }}">
                 <label for="url" class="block text-sm font-medium text-gray-700 mb-2">
-                    الرابط/URL
+                    الرابط/URL <span class="text-red-500">*</span>
                 </label>
                 <input type="url" 
                        id="url" 
                        name="url"
+                       value="{{ resource.url if resource and not resource.filename else '' }}"
                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                        placeholder="https://example.com">
             </div>
 
-            <!-- Type and Created By Row -->
+            <!-- File Upload (for files) -->
+            <div id="file_section" class="{{ '' if resource and resource.filename else 'hidden' }}">
+                <label for="file" class="block text-sm font-medium text-gray-700 mb-2">
+                    اختر ملف {% if not resource %}<span class="text-red-500">*</span>{% endif %}
+                </label>
+                {% if resource and resource.filename %}
+                    <div class="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="font-medium text-green-800">📁 {{ resource.filename }}</p>
+                                <p class="text-sm text-green-600">
+                                    {{ resource.formatted_size if resource.formatted_size else 'حجم غير معروف' }}
+                                </p>
+                            </div>
+                            <a href="{{ url_for('serve_resource_file', filename=resource.filename) }}" 
+                               target="_blank"
+                               class="text-green-600 hover:text-green-800">
+                                👁️ عرض
+                            </a>
+                        </div>
+                        <p class="text-xs text-green-600 mt-2">اختر ملف جديد لاستبدال الملف الحالي</p>
+                    </div>
+                {% endif %}
+                <input type="file" 
+                       id="file" 
+                       name="file"
+                       accept=".txt,.pdf,.png,.jpg,.jpeg,.gif,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.7z,.mp4,.avi,.mov,.mp3,.wav,.csv,.json,.xml,.md"
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent">
+                <p class="text-sm text-gray-500 mt-2">
+                    الأنواع المدعومة: PDF, Word, Excel, PowerPoint, الصور, الفيديوهات, الملفات المضغوطة وغيرها
+                    <br>الحد الأقصى: 50 ميجابايت
+                </p>
+            </div>
+
+            <!-- Manual Resource Type (for links only) -->
+            <div id="manual_type_section" class="{{ 'hidden' if resource and resource.filename else '' }}">
+                <label for="resource_type" class="block text-sm font-medium text-gray-700 mb-2">
+                    تصنيف المورد
+                </label>
+                <select id="resource_type" 
+                        name="resource_type"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent">
+                    <option value="link" {{ 'selected' if not resource or resource.resource_type == 'link' else '' }}>🔗 رابط</option>
+                    <option value="tool" {{ 'selected' if resource and resource.resource_type == 'tool' else '' }}>🔧 أداة</option>
+                    <option value="reference" {{ 'selected' if resource and resource.resource_type == 'reference' else '' }}>📖 مرجع</option>
+                    <option value="note" {{ 'selected' if resource and resource.resource_type == 'note' else '' }}>📝 ملاحظة</option>
+                </select>
+            </div>
+
+            <!-- Tags and Created By Row -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Resource Type -->
+                <!-- Tags -->
                 <div>
-                    <label for="resource_type" class="block text-sm font-medium text-gray-700 mb-2">
-                        النوع
+                    <label for="tags" class="block text-sm font-medium text-gray-700 mb-2">
+                        العلامات
                     </label>
-                    <select id="resource_type" 
-                            name="resource_type"
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent">
-                        <option value="document">📄 مستند</option>
-                        <option value="link" selected>🔗 رابط</option>
-                        <option value="file">📁 ملف</option>
-                        <option value="note">📝 ملاحظة</option>
-                        <option value="tool">🔧 أداة</option>
-                        <option value="reference">📖 مرجع</option>
-                    </select>
+                    <input type="text" 
+                           id="tags" 
+                           name="tags"
+                           value="{{ resource.tags if resource else '' }}"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                           placeholder="مثال: تصميم، بحث، أدوات (مفصولة بفواصل)">
+                    <p class="text-sm text-gray-500 mt-1">افصل العلامات بفواصل لمساعدة الآخرين في العثور على هذا المورد</p>
                 </div>
 
                 <!-- Created By -->
@@ -75,29 +146,17 @@
                     <input type="text" 
                            id="created_by" 
                            name="created_by"
+                           value="{{ resource.created_by if resource else '' }}"
                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                            placeholder="اسمك">
                 </div>
-            </div>
-
-            <!-- Tags -->
-            <div>
-                <label for="tags" class="block text-sm font-medium text-gray-700 mb-2">
-                    العلامات
-                </label>
-                <input type="text" 
-                       id="tags" 
-                       name="tags"
-                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                       placeholder="مثال: تصميم، بحث، أدوات (مفصولة بفواصل)">
-                <p class="text-sm text-gray-500 mt-1">افصل العلامات بفواصل لمساعدة الآخرين في العثور على هذا المورد</p>
             </div>
 
             <!-- Form Actions -->
             <div class="flex space-x-4 space-x-reverse pt-6">
                 <button type="submit" 
                         class="flex-1 bg-cyan-950 text-white font-bold py-3 px-6 rounded-lg hover:bg-cyan-800 transition-colors">
-                    <span class="text-xl ml-2">📎</span>إضافة المورد
+                    <span class="text-xl ml-2">📎</span>{{ 'تحديث المورد' if resource else 'إضافة المورد' }}
                 </button>
                 <a href="{{ url_for('resources') }}" 
                    class="flex-1 text-center bg-gray-200 text-gray-700 font-bold py-3 px-6 rounded-lg hover:bg-gray-300 transition-colors">
@@ -119,4 +178,38 @@
         </ul>
     </div>
 </div>
+
+<script>
+    function toggleResourceType() {
+        const linkRadio = document.getElementById('type_link');
+        const fileRadio = document.getElementById('type_file');
+        const urlSection = document.getElementById('url_section');
+        const fileSection = document.getElementById('file_section');
+        const manualTypeSection = document.getElementById('manual_type_section');
+        const urlInput = document.getElementById('url');
+        const fileInput = document.getElementById('file');
+        
+        if (linkRadio.checked) {
+            urlSection.classList.remove('hidden');
+            fileSection.classList.add('hidden');
+            manualTypeSection.classList.remove('hidden');
+            urlInput.required = true;
+            fileInput.required = false;
+        } else if (fileRadio.checked) {
+            urlSection.classList.add('hidden');
+            fileSection.classList.remove('hidden');
+            manualTypeSection.classList.add('hidden');
+            urlInput.required = false;
+            // Only require file input for new resources
+            {% if not resource %}
+            fileInput.required = true;
+            {% endif %}
+        }
+    }
+    
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleResourceType();
+    });
+</script>
 {% endblock %} 

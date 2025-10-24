@@ -4,4 +4,6 @@ Werkzeug==3.0.1
 google-generativeai==0.3.2
 requests==2.31.0
 reportlab==4.0.7
-pyppeteer==1.0.2 
+pyppeteer==1.0.2
+beautifulsoup4==4.12.2
+boto3==1.34.44 

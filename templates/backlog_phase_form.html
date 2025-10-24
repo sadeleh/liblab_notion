@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}{% if phase %}Edit Phase{% else %}New Phase{% endif %} - Backlog{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-3xl" dir="ltr">
+    <div class="bg-white rounded-lg shadow-lg p-8">
+        <h2 class="text-3xl font-bold text-cyan-950 mb-2">
+            {% if phase %}✏️ Edit Phase{% else %}➕ New Phase{% endif %}
+        </h2>
+        <p class="text-gray-600 mb-6">Project: {{ project.name }}</p>
+
+        <form method="POST" class="space-y-6">
+            <!-- Name -->
+            <div>
+                <label class="block text-gray-700 font-semibold mb-2">Phase Name *</label>
+                <input type="text" name="name" required
+                       value="{{ phase.name if phase else '' }}"
+                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent"
+                       placeholder="Example: Phase 1: Walking Skeleton">
+            </div>
+
+            <!-- Name Arabic (optional) -->
+            <div>
+                <label class="block text-gray-700 font-semibold mb-2">Phase Name (Arabic)</label>
+                <input type="text" name="name_arabic"
+                       value="{{ phase.name_arabic if phase else '' }}"
+                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent"
+                       placeholder="اسم المرحلة (اختياري)">
+            </div>
+
+            <!-- Description -->
+            <div>
+                <label class="block text-gray-700 font-semibold mb-2">Description</label>
+                <textarea name="description" rows="3"
+                          class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent"
+                          placeholder="Phase description...">{{ phase.description if phase else '' }}</textarea>
+            </div>
+
+            <!-- Goal -->
+            <div>
+                <label class="block text-gray-700 font-semibold mb-2">Goal</label>
+                <textarea name="goal" rows="2"
+                          class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent"
+                          placeholder="Goal of this phase...">{{ phase.goal if phase else '' }}</textarea>
+            </div>
+
+            <!-- Duration and Status -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Duration (weeks)</label>
+                    <input type="number" name="duration_weeks" min="1"
+                           value="{{ phase.duration_weeks if phase and phase.duration_weeks else '' }}"
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent"
+                           placeholder="4">
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Status</label>
+                    <select name="status" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent">
+                        <option value="pending" {% if phase and phase.status == 'pending' %}selected{% endif %}>Pending</option>
+                        <option value="in_progress" {% if phase and phase.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                        <option value="completed" {% if phase and phase.status == 'completed' %}selected{% endif %}>Completed</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex space-x-4 pt-4">
+                <button type="submit" class="flex-1 bg-cyan-950 text-white py-3 px-6 rounded-lg hover:bg-cyan-900 transition font-semibold">
+                    💾 Save
+                </button>
+                <a href="{{ url_for('backlog_project', project_id=project.id) }}" 
+                   class="flex-1 bg-gray-200 text-gray-700 py-3 px-6 rounded-lg hover:bg-gray-300 transition text-center font-semibold">
+                    ❌ Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

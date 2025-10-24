@@ -17,20 +17,71 @@
     </div>
 </div>
 
-<!-- Filters -->
+<!-- Search and Filters -->
 <div class="bg-white p-6 rounded-xl shadow-lg mb-6">
-    <div class="flex flex-wrap gap-4 items-center">
+    <!-- Search Bar -->
+    <div class="mb-6">
+        <div class="relative">
+            <input type="text" 
+                   id="search-input" 
+                   value="{{ current_search }}"
+                   placeholder="البحث في الموارد (العنوان، الوصف، العلامات، اسم الملف، الرابط، المؤلف)..."
+                   class="w-full px-4 py-3 pl-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span class="text-gray-400 text-xl">🔍</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters Row -->
+    <div class="flex flex-wrap gap-4 items-center mb-4">
         <div class="flex items-center space-x-2 space-x-reverse">
             <label for="type-filter" class="font-medium text-gray-700">النوع:</label>
             <select id="type-filter" class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-cyan-500 focus:border-transparent">
                 <option value="all" {{ 'selected' if current_type == 'all' else '' }}>الكل</option>
                 {% for type in resource_types %}
-                    <option value="{{ type[0] }}" {{ 'selected' if current_type == type[0] else '' }}>{{ type[0].title() }}</option>
+                    <option value="{{ type[0] }}" {{ 'selected' if current_type == type[0] else '' }}>
+                        {{ '📄 مستند' if type[0] == 'document' else
+                           '🔗 رابط' if type[0] == 'link' else
+                           '📁 ملف' if type[0] == 'file' else
+                           '🖼️ صورة' if type[0] == 'image' else
+                           '🎥 فيديو' if type[0] == 'video' else
+                           '🎵 صوت' if type[0] == 'audio' else
+                           '📊 جدول بيانات' if type[0] == 'spreadsheet' else
+                           '📈 عرض تقديمي' if type[0] == 'presentation' else
+                           '🗜️ أرشيف' if type[0] == 'archive' else
+                           '🔧 أداة' if type[0] == 'tool' else
+                           '📖 مرجع' if type[0] == 'reference' else
+                           '📝 ملاحظة' if type[0] == 'note' else
+                           type[0].title() }}
+                    </option>
                 {% endfor %}
             </select>
         </div>
         
         <button onclick="applyFilters()" class="bg-cyan-950 text-white px-4 py-2 rounded-lg hover:bg-cyan-800">تطبيق</button>
+        <button onclick="clearFilters()" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">مسح</button>
+    </div>
+
+    <!-- Sorting Row -->
+    <div class="flex flex-wrap gap-4 items-center pt-4 border-t border-gray-200">
+        <div class="flex items-center space-x-2 space-x-reverse">
+            <label for="sort-by" class="font-medium text-gray-700">ترتيب حسب:</label>
+            <select id="sort-by" class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-cyan-500 focus:border-transparent">
+                <option value="created_at" {{ 'selected' if current_sort == 'created_at' else '' }}>تاريخ الإضافة</option>
+                <option value="updated_at" {{ 'selected' if current_sort == 'updated_at' else '' }}>آخر تحديث</option>
+                <option value="title" {{ 'selected' if current_sort == 'title' else '' }}>العنوان</option>
+                <option value="type" {{ 'selected' if current_sort == 'type' else '' }}>النوع</option>
+            </select>
+        </div>
+        
+        <div class="flex items-center space-x-2 space-x-reverse">
+            <label for="sort-order" class="font-medium text-gray-700">الترتيب:</label>
+            <select id="sort-order" class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-cyan-500 focus:border-transparent">
+                <option value="desc" {{ 'selected' if current_order == 'desc' else '' }}>تنازلي</option>
+                <option value="asc" {{ 'selected' if current_order == 'asc' else '' }}>تصاعدي</option>
+            </select>
+        </div>
     </div>
 </div>
 
@@ -38,16 +89,55 @@
 {% if resources %}
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {% for resource in resources %}
-            <div class="card bg-white p-6 rounded-xl shadow-lg border-purple-500">
+            <div class="card bg-white p-6 rounded-xl shadow-lg border-purple-500 hover:shadow-xl transition-shadow">
                 <div class="flex justify-between items-start mb-3">
                     <h3 class="text-lg font-bold text-gray-900">{{ resource.title }}</h3>
-                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800">
-                        {{ resource.resource_type.title() }}
+                    <span class="px-2 py-1 text-xs font-medium rounded-full 
+                        {{ 'bg-blue-100 text-blue-800' if resource.resource_type == 'document' else
+                           'bg-cyan-100 text-cyan-800' if resource.resource_type == 'link' else
+                           'bg-green-100 text-green-800' if resource.resource_type == 'file' else
+                           'bg-yellow-100 text-yellow-800' if resource.resource_type == 'image' else
+                           'bg-red-100 text-red-800' if resource.resource_type == 'video' else
+                           'bg-purple-100 text-purple-800' if resource.resource_type == 'audio' else
+                           'bg-indigo-100 text-indigo-800' if resource.resource_type == 'spreadsheet' else
+                           'bg-pink-100 text-pink-800' if resource.resource_type == 'presentation' else
+                           'bg-gray-100 text-gray-800' if resource.resource_type == 'archive' else
+                           'bg-orange-100 text-orange-800' if resource.resource_type == 'tool' else
+                           'bg-teal-100 text-teal-800' if resource.resource_type == 'reference' else
+                           'bg-lime-100 text-lime-800' if resource.resource_type == 'note' else
+                           'bg-purple-100 text-purple-800' }}">
+                        {{ '📄 مستند' if resource.resource_type == 'document' else
+                           '🔗 رابط' if resource.resource_type == 'link' else
+                           '📁 ملف' if resource.resource_type == 'file' else
+                           '🖼️ صورة' if resource.resource_type == 'image' else
+                           '🎥 فيديو' if resource.resource_type == 'video' else
+                           '🎵 صوت' if resource.resource_type == 'audio' else
+                           '📊 جدول' if resource.resource_type == 'spreadsheet' else
+                           '📈 عرض' if resource.resource_type == 'presentation' else
+                           '🗜️ أرشيف' if resource.resource_type == 'archive' else
+                           '🔧 أداة' if resource.resource_type == 'tool' else
+                           '📖 مرجع' if resource.resource_type == 'reference' else
+                           '📝 ملاحظة' if resource.resource_type == 'note' else
+                           resource.resource_type.title() }}
                     </span>
                 </div>
                 
                 {% if resource.description %}
                     <p class="text-gray-600 mb-4">{{ resource.description[:120] }}{{ '...' if resource.description|length > 120 else '' }}</p>
+                {% endif %}
+                
+                <!-- File Info (if it's a file) -->
+                {% if resource.filename %}
+                    <div class="mb-4 p-3 bg-gray-50 rounded-lg">
+                        <div class="flex items-center justify-between">
+                            <div class="flex-1">
+                                <p class="text-sm font-medium text-gray-900">📁 {{ resource.filename }}</p>
+                                {% if resource.formatted_size %}
+                                    <p class="text-xs text-gray-500">{{ resource.formatted_size }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
                 {% endif %}
                 
                 <div class="space-y-2 mb-4">
@@ -60,27 +150,58 @@
                             <span class="text-gray-500">العلامات:</span>
                             <div class="flex flex-wrap gap-1 max-w-xs">
                                 {% for tag in resource.tags.split(',') %}
-                                    <span class="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">{{ tag.strip() }}</span>
+                                    <span class="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded cursor-pointer hover:bg-gray-200"
+                                          onclick="filterByTag('{{ tag.strip() }}')">
+                                        #{{ tag.strip() }}
+                                    </span>
                                 {% endfor %}
                             </div>
+                        </div>
+                    {% endif %}
+                    {% if resource.updated_at and resource.updated_at != resource.created_at %}
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-500">آخر تحديث:</span>
+                            <span class="font-medium text-xs">{{ resource.updated_at.strftime('%Y-%m-%d %H:%M') }}</span>
                         </div>
                     {% endif %}
                 </div>
                 
                 <!-- Action Buttons -->
-                <div class="flex space-x-2 space-x-reverse">
-                    {% if resource.url %}
-                        <a href="{{ resource.url }}" 
-                           target="_blank"
-                           class="flex-1 text-center py-2 px-3 text-sm font-medium bg-cyan-950 text-white rounded-lg hover:bg-cyan-800">
-                            <span class="ml-1">🔗</span>فتح الرابط
-                        </a>
-                    {% endif %}
+                <div class="space-y-2">
+                    <!-- Primary Action -->
+                    <div class="flex space-x-2 space-x-reverse">
+                        {% if resource.filename %}
+                            <a href="{{ url_for('serve_resource_file', filename=resource.filename) }}" 
+                               target="_blank"
+                               class="flex-1 text-center py-2 px-3 text-sm font-medium bg-cyan-950 text-white rounded-lg hover:bg-cyan-800">
+                                <span class="ml-1">👁️</span>فتح الملف
+                            </a>
+                        {% elif resource.url %}
+                            <a href="{{ resource.url }}" 
+                               target="_blank"
+                               class="flex-1 text-center py-2 px-3 text-sm font-medium bg-cyan-950 text-white rounded-lg hover:bg-cyan-800">
+                                <span class="ml-1">🔗</span>فتح الرابط
+                            </a>
+                        {% endif %}
+                        
+                        <button onclick="copyToClipboard('{{ resource.url or resource.title }}')"
+                                class="py-2 px-3 text-sm font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                                title="نسخ">
+                            📋
+                        </button>
+                    </div>
                     
-                    <button onclick="copyToClipboard('{{ resource.url or resource.title }}')"
-                            class="py-2 px-3 text-sm font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
-                        📋
-                    </button>
+                    <!-- Edit/Delete Actions -->
+                    <div class="flex space-x-2 space-x-reverse">
+                        <a href="{{ url_for('edit_resource', resource_id=resource.id) }}" 
+                           class="flex-1 text-center py-2 px-3 text-sm font-medium bg-yellow-100 text-yellow-800 rounded-lg hover:bg-yellow-200">
+                            ✏️ تعديل
+                        </a>
+                        <button onclick="deleteResource({{ resource.id }})" 
+                                class="flex-1 py-2 px-3 text-sm font-medium bg-red-100 text-red-800 rounded-lg hover:bg-red-200">
+                            🗑️ حذف
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="mt-3 pt-3 border-t border-gray-200">
@@ -91,6 +212,14 @@
                                 {{ '📄' if resource.resource_type == 'document' else
                                    '🔗' if resource.resource_type == 'link' else
                                    '📁' if resource.resource_type == 'file' else
+                                   '🖼️' if resource.resource_type == 'image' else
+                                   '🎥' if resource.resource_type == 'video' else
+                                   '🎵' if resource.resource_type == 'audio' else
+                                   '📊' if resource.resource_type == 'spreadsheet' else
+                                   '📈' if resource.resource_type == 'presentation' else
+                                   '🗜️' if resource.resource_type == 'archive' else
+                                   '🔧' if resource.resource_type == 'tool' else
+                                   '📖' if resource.resource_type == 'reference' else
                                    '📝' }}
                             </span>
                         </div>
@@ -113,14 +242,35 @@
 <script>
     function applyFilters() {
         const type = document.getElementById('type-filter').value;
+        const search = document.getElementById('search-input').value;
+        const sortBy = document.getElementById('sort-by').value;
+        const sortOrder = document.getElementById('sort-order').value;
         const url = new URL(window.location);
         
-        if (type === 'all') {
-            url.searchParams.delete('type');
-        } else {
-            url.searchParams.set('type', type);
-        }
+        // Clear existing params
+        url.searchParams.delete('type');
+        url.searchParams.delete('search');
+        url.searchParams.delete('sort');
+        url.searchParams.delete('order');
         
+        // Set new params
+        if (type !== 'all') url.searchParams.set('type', type);
+        if (search.trim()) url.searchParams.set('search', search.trim());
+        if (sortBy !== 'created_at') url.searchParams.set('sort', sortBy);
+        if (sortOrder !== 'desc') url.searchParams.set('order', sortOrder);
+        
+        window.location.href = url.toString();
+    }
+
+    function clearFilters() {
+        const url = new URL(window.location);
+        url.search = '';
+        window.location.href = url.toString();
+    }
+
+    function filterByTag(tagName) {
+        const url = new URL(window.location);
+        url.searchParams.set('search', tagName);
         window.location.href = url.toString();
     }
     
@@ -135,5 +285,35 @@
             }, 2000);
         });
     }
+
+    function deleteResource(resourceId) {
+        if (confirm('هل أنت متأكد من حذف هذا المورد؟\n\nسيتم حذف الملف المرتبط به نهائياً إن وجد.\nلا يمكن التراجع عن هذا الإجراء.')) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/resources/${resourceId}/delete`;
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+
+    // Auto-apply filters when search input changes (with debounce)
+    let searchTimeout;
+    document.getElementById('search-input').addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(applyFilters, 500);
+    });
+
+    // Auto-apply filters when select elements change
+    document.getElementById('type-filter').addEventListener('change', applyFilters);
+    document.getElementById('sort-by').addEventListener('change', applyFilters);
+    document.getElementById('sort-order').addEventListener('change', applyFilters);
+
+    // Enable Enter key for search
+    document.getElementById('search-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            clearTimeout(searchTimeout);
+            applyFilters();
+        }
+    });
 </script>
 {% endblock %} 

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}إدارة Workspaces - مركز تخطيط الفريق{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-cyan-950">إدارة Workspaces</h1>
+        <a href="{{ url_for('admin_workspace_new') }}" class="bg-cyan-950 hover:bg-cyan-900 text-white px-6 py-2 rounded-lg">
+            ➕ إضافة Workspace
+        </a>
+    </div>
+
+    {% if workspaces %}
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <table class="w-full">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-right text-sm font-semibold text-gray-900">المعرف (ID)</th>
+                    <th class="px-6 py-3 text-right text-sm font-semibold text-gray-900">الاسم</th>
+                    <th class="px-6 py-3 text-right text-sm font-semibold text-gray-900">الوصف</th>
+                    <th class="px-6 py-3 text-right text-sm font-semibold text-gray-900">عدد المستخدمين</th>
+                    <th class="px-6 py-3 text-right text-sm font-semibold text-gray-900">تاريخ الإنشاء</th>
+                    <th class="px-6 py-3 text-right text-sm font-semibold text-gray-900">الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                {% for workspace in workspaces %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 text-sm text-gray-900">{{ workspace.id }}</td>
+                    <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ workspace.name }}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">{{ workspace.description or '-' }}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">{{ workspace.users|length }}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">{{ workspace.created_at.strftime('%Y-%m-%d') if workspace.created_at else '-' }}</td>
+                    <td class="px-6 py-4 text-sm">
+                        <div class="flex gap-2">
+                            <a href="{{ url_for('admin_workspace_edit', workspace_id=workspace.id) }}" 
+                               class="text-blue-600 hover:text-blue-800">
+                                ✏️ تعديل
+                            </a>
+                            {% if workspace.id != 'ws-general' %}
+                            <form method="POST" action="{{ url_for('admin_workspace_delete', workspace_id=workspace.id) }}" 
+                                  onsubmit="return confirm('هل أنت متأكد من حذف هذا الـ workspace؟')" class="inline">
+                                <button type="submit" class="text-red-600 hover:text-red-800">
+                                    🗑️ حذف
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-lg shadow p-8 text-center">
+        <p class="text-gray-600">لا توجد workspaces بعد</p>
+        <a href="{{ url_for('admin_workspace_new') }}" class="text-cyan-950 hover:underline">
+            أنشئ workspace الأول
+        </a>
+    </div>
+    {% endif %}
+
+    <div class="mt-6 flex gap-6">
+        <a href="{{ url_for('admin_users') }}" class="text-cyan-950 hover:underline">
+            → إدارة المستخدمين
+        </a>
+        <a href="{{ url_for('index') }}" class="text-cyan-950 hover:underline">
+            ← العودة إلى لوحة التحكم
+        </a>
+    </div>
+</div>
+{% endblock %}
+

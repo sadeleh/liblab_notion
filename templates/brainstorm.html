@@ -60,6 +60,12 @@
                             ✅
                         </button>
                     {% endif %}
+                    
+                    <button onclick="deleteBrainstormSession({{ session.id }})" 
+                            class="py-2 px-3 text-sm font-medium bg-red-100 text-red-800 rounded-lg hover:bg-red-200"
+                            title="حذف الجلسة">
+                        🗑️
+                    </button>
                 </div>
                 
                 <div class="mt-3 pt-3 border-t border-gray-200">
@@ -117,6 +123,90 @@
             // Fallback - just reload
             location.reload();
         });
+    }
+    
+    function deleteBrainstormSession(sessionId) {
+        if (!confirm('هل أنت متأكد من حذف هذه الجلسة؟\n\nسيتم حذف الجلسة وجميع الأفكار المرتبطة بها نهائياً.\nلا يمكن التراجع عن هذا الإجراء.')) {
+            return;
+        }
+        
+        // Show loading state
+        const deleteBtn = document.querySelector(`[onclick="deleteBrainstormSession(${sessionId})"]`);
+        const originalText = deleteBtn.innerHTML;
+        deleteBtn.innerHTML = '⏳';
+        deleteBtn.disabled = true;
+        
+        // Send delete request
+        fetch(`/brainstorm/${sessionId}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success message
+                showNotification('تم حذف جلسة العصف الذهني بنجاح!', 'success');
+                
+                // Animate card removal
+                const sessionCard = deleteBtn.closest('.card');
+                if (sessionCard) {
+                    sessionCard.style.transition = 'all 0.3s ease';
+                    sessionCard.style.transform = 'scale(0.8)';
+                    sessionCard.style.opacity = '0';
+                    
+                    setTimeout(() => {
+                        sessionCard.remove();
+                        
+                        // Check if no sessions left and reload page to show empty state
+                        const remainingSessions = document.querySelectorAll('.card').length;
+                        if (remainingSessions === 0) {
+                            location.reload();
+                        }
+                    }, 300);
+                }
+            } else {
+                throw new Error(data.message || 'فشل في حذف الجلسة');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting session:', error);
+            showNotification('حدث خطأ أثناء حذف الجلسة', 'error');
+            
+            // Restore button state
+            deleteBtn.innerHTML = originalText;
+            deleteBtn.disabled = false;
+        });
+    }
+    
+    function showNotification(message, type = 'info') {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg text-white font-medium ${
+            type === 'success' ? 'bg-green-600' : 
+            type === 'error' ? 'bg-red-600' : 
+            'bg-blue-600'
+        }`;
+        notification.textContent = message;
+        
+        // Add to page
+        document.body.appendChild(notification);
+        
+        // Animate in
+        notification.style.transform = 'translateX(100%)';
+        notification.style.transition = 'transform 0.3s ease';
+        setTimeout(() => {
+            notification.style.transform = 'translateX(0)';
+        }, 10);
+        
+        // Remove after 4 seconds
+        setTimeout(() => {
+            notification.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                notification.remove();
+            }, 300);
+        }, 4000);
     }
 </script>
 {% endblock %} 

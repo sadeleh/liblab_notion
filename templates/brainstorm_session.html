@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}{{ session.title }} - جلسة العصف الذهني{% endblock %}
+{% block title %}{{ brainstorm_session.title }} - جلسة العصف الذهني{% endblock %}
 
 {% block content %}
 <header class="text-center mb-8">
-    <h1 class="text-2xl md:text-4xl font-bold text-cyan-950">{{ session.title }}</h1>
-    <p class="text-lg text-gray-600 mt-2">{{ session.description }}</p>
+    <h1 class="text-2xl md:text-4xl font-bold text-cyan-950">{{ brainstorm_session.title }}</h1>
+    <p class="text-lg text-gray-600 mt-2">{{ brainstorm_session.description }}</p>
     <div class="mt-3 text-sm text-gray-500">
-        أنشأها {{ session.created_by or 'مجهول' }} في {{ session.created_at.strftime('%Y-%m-%d') }}
+        أنشأها {{ brainstorm_session.created_by or 'مجهول' }} في {{ brainstorm_session.created_at.strftime('%Y-%m-%d') }}
     </div>
 </header>
 
@@ -16,7 +16,7 @@
     <h3 class="text-xl font-bold text-cyan-950 mb-4">
         <span class="text-2xl ml-2">💡</span>أضف فكرتك
     </h3>
-    <form method="POST" action="{{ url_for('add_idea', session_id=session.id) }}" class="space-y-4">
+    <form method="POST" action="{{ url_for('add_idea', session_id=brainstorm_session.id) }}" class="space-y-4">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div class="md:col-span-2">
                 <textarea name="content" 
@@ -60,7 +60,7 @@
             <div class="card bg-white p-6 rounded-xl shadow-lg border-cyan-500 idea-card" data-idea-id="{{ idea.id }}">
                 <div class="flex justify-between items-start mb-3">
                     <div class="flex-1 pr-4">
-                        <p class="text-gray-900 leading-relaxed">{{ idea.content }}</p>
+                        <p class="idea-content text-gray-900 leading-relaxed">{{ idea.content }}</p>
                     </div>
                     <div class="flex flex-col items-center">
                         <button onclick="voteIdea({{ idea.id }})" 
@@ -71,8 +71,22 @@
                     </div>
                 </div>
                 
+                <!-- Edit/Delete Actions -->
+                <div class="flex justify-between items-center mb-3">
+                    <div class="flex space-x-2 space-x-reverse">
+                        <button onclick="editIdea({{ idea.id }})" 
+                                class="edit-btn bg-yellow-100 hover:bg-yellow-200 text-yellow-800 px-3 py-1 rounded-lg text-sm font-medium transition-colors">
+                            ✏️ تعديل
+                        </button>
+                        <button onclick="deleteIdea({{ idea.id }})" 
+                                class="delete-btn bg-red-100 hover:bg-red-200 text-red-800 px-3 py-1 rounded-lg text-sm font-medium transition-colors">
+                            🗑️ حذف
+                        </button>
+                    </div>
+                </div>
+                
                 <div class="flex justify-between items-center text-sm text-gray-500 mt-4 pt-3 border-t border-gray-200">
-                    <span>{{ idea.author or 'مجهول' }}</span>
+                    <span class="idea-author">{{ idea.author or 'مجهول' }}</span>
                     <span>{{ idea.created_at.strftime('%m/%d %H:%M') }}</span>
                 </div>
             </div>
@@ -149,6 +163,198 @@
                 // Simple fallback - reload page
                 location.reload();
             });
+    }
+    
+    function editIdea(ideaId) {
+        const ideaCard = document.querySelector(`[data-idea-id="${ideaId}"]`);
+        const contentElement = ideaCard.querySelector('.idea-content');
+        const authorElement = ideaCard.querySelector('.idea-author');
+        const editBtn = ideaCard.querySelector('.edit-btn');
+        
+        // Get current values
+        const currentContent = contentElement.textContent;
+        const currentAuthor = authorElement.textContent === 'مجهول' ? '' : authorElement.textContent;
+        
+        // Create edit form
+        const editForm = document.createElement('div');
+        editForm.className = 'edit-form';
+        editForm.innerHTML = `
+            <div class="space-y-3">
+                <textarea class="edit-content w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500" 
+                         rows="3" placeholder="محتوى الفكرة...">${currentContent}</textarea>
+                <input type="text" class="edit-author w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500" 
+                       placeholder="اسم المؤلف..." value="${currentAuthor}">
+                <div class="flex space-x-2 space-x-reverse">
+                    <button onclick="saveEdit(${ideaId})" 
+                            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                        💾 حفظ
+                    </button>
+                    <button onclick="cancelEdit(${ideaId})" 
+                            class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                        ❌ إلغاء
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Replace content with edit form
+        contentElement.style.display = 'none';
+        contentElement.parentNode.insertBefore(editForm, contentElement.nextSibling);
+        editBtn.style.display = 'none';
+        
+        // Focus on textarea
+        editForm.querySelector('.edit-content').focus();
+    }
+    
+    function saveEdit(ideaId) {
+        const ideaCard = document.querySelector(`[data-idea-id="${ideaId}"]`);
+        const editForm = ideaCard.querySelector('.edit-form');
+        const newContent = editForm.querySelector('.edit-content').value.trim();
+        const newAuthor = editForm.querySelector('.edit-author').value.trim();
+        
+        if (!newContent) {
+            alert('يرجى إدخال محتوى الفكرة');
+            return;
+        }
+        
+        // Show loading state
+        const saveBtn = editForm.querySelector('button');
+        saveBtn.textContent = '⏳ جاري الحفظ...';
+        saveBtn.disabled = true;
+        
+        // Create form data
+        const formData = new FormData();
+        formData.append('content', newContent);
+        formData.append('author', newAuthor);
+        
+        // Send update request
+        fetch(`/brainstorm/{{ brainstorm_session.id }}/edit_idea/${ideaId}`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (response.ok) {
+                // Update the display
+                const contentElement = ideaCard.querySelector('.idea-content');
+                const authorElement = ideaCard.querySelector('.idea-author');
+                
+                contentElement.textContent = newContent;
+                authorElement.textContent = newAuthor || 'مجهول';
+                
+                // Remove edit form and show content
+                editForm.remove();
+                contentElement.style.display = 'block';
+                ideaCard.querySelector('.edit-btn').style.display = 'inline-block';
+                
+                // Show success feedback
+                showNotification('تم تحديث الفكرة بنجاح!', 'success');
+            } else {
+                throw new Error('فشل في تحديث الفكرة');
+            }
+        })
+        .catch(error => {
+            console.error('Error updating idea:', error);
+            showNotification('حدث خطأ أثناء تحديث الفكرة', 'error');
+            saveBtn.textContent = '💾 حفظ';
+            saveBtn.disabled = false;
+        });
+    }
+    
+    function cancelEdit(ideaId) {
+        const ideaCard = document.querySelector(`[data-idea-id="${ideaId}"]`);
+        const editForm = ideaCard.querySelector('.edit-form');
+        const contentElement = ideaCard.querySelector('.idea-content');
+        
+        // Remove edit form and show original content
+        editForm.remove();
+        contentElement.style.display = 'block';
+        ideaCard.querySelector('.edit-btn').style.display = 'inline-block';
+    }
+    
+    function deleteIdea(ideaId) {
+        if (!confirm('هل أنت متأكد من حذف هذه الفكرة؟ لا يمكن التراجع عن هذا الإجراء.')) {
+            return;
+        }
+        
+        const ideaCard = document.querySelector(`[data-idea-id="${ideaId}"]`);
+        const deleteBtn = ideaCard.querySelector('.delete-btn');
+        
+        // Show loading state
+        deleteBtn.textContent = '⏳ جاري الحذف...';
+        deleteBtn.disabled = true;
+        
+        // Send delete request
+        fetch(`/brainstorm/{{ brainstorm_session.id }}/delete_idea/${ideaId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Animate card removal
+                ideaCard.style.transition = 'all 0.3s ease';
+                ideaCard.style.transform = 'scale(0.8)';
+                ideaCard.style.opacity = '0';
+                
+                setTimeout(() => {
+                    ideaCard.remove();
+                    
+                    // Update ideas count
+                    const ideasCountElement = document.querySelector('h3 span');
+                    if (ideasCountElement) {
+                        const currentCount = parseInt(ideasCountElement.textContent.match(/\d+/)[0]);
+                        ideasCountElement.textContent = `الأفكار (${currentCount - 1})`;
+                    }
+                    
+                    // Show empty state if no ideas left
+                    const remainingIdeas = document.querySelectorAll('.idea-card');
+                    if (remainingIdeas.length === 0) {
+                        location.reload(); // Reload to show empty state
+                    }
+                }, 300);
+                
+                showNotification('تم حذف الفكرة بنجاح!', 'success');
+            } else {
+                throw new Error(data.message || 'فشل في حذف الفكرة');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting idea:', error);
+            showNotification('حدث خطأ أثناء حذف الفكرة', 'error');
+            deleteBtn.textContent = '🗑️ حذف';
+            deleteBtn.disabled = false;
+        });
+    }
+    
+    function showNotification(message, type = 'info') {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg text-white font-medium ${
+            type === 'success' ? 'bg-green-600' : 
+            type === 'error' ? 'bg-red-600' : 
+            'bg-blue-600'
+        }`;
+        notification.textContent = message;
+        
+        // Add to page
+        document.body.appendChild(notification);
+        
+        // Animate in
+        notification.style.transform = 'translateX(100%)';
+        notification.style.transition = 'transform 0.3s ease';
+        setTimeout(() => {
+            notification.style.transform = 'translateX(0)';
+        }, 10);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+            notification.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                notification.remove();
+            }, 300);
+        }, 3000);
     }
     
     // Auto-refresh ideas every 30 seconds for real-time collaboration

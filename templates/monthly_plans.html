@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}مركز التخطيط الشهري{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <!-- Header Section -->
+    <div class="bg-gradient-to-r from-cyan-50 to-blue-50 rounded-lg p-6 mb-6 border border-cyan-200">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-cyan-950 mb-2" dir="rtl">📅 مركز التخطيط الشهري</h1>
+                <p class="text-gray-600 text-sm sm:text-base" dir="rtl">خطط وتابع أهدافك الشهرية ومعالمك المهمة</p>
+            </div>
+            <a href="{{ url_for('new_monthly_plan') }}" 
+               class="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 whitespace-nowrap">
+                ➕ خطة جديدة
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600" dir="rtl">إجمالي الخطط</p>
+                    <p class="text-2xl font-bold text-cyan-950">{{ stats.total }}</p>
+                </div>
+                <div class="text-cyan-600 text-2xl">📊</div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600" dir="rtl">الشهر الحالي</p>
+                    <p class="text-2xl font-bold {{ 'text-green-600' if stats.current_month else 'text-orange-600' }}">
+                        {{ 'موجود' if stats.current_month else 'غير موجود' }}
+                    </p>
+                </div>
+                <div class="text-{{ 'green' if stats.current_month else 'orange' }}-600 text-2xl">
+                    {{ '✅' if stats.current_month else '⚠️' }}
+                </div>
+            </div>
+        </div>
+        
+        {% if stats.current_month_plan %}
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600" dir="rtl">تقدم الشهر الحالي</p>
+                    <p class="text-2xl font-bold text-blue-600">{{ stats.current_month_plan.progress_percentage }}%</p>
+                </div>
+                <div class="text-blue-600 text-2xl">🎯</div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+        <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1" dir="rtl">السنة</label>
+                <select name="year" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                    <option value="all" {{ 'selected' if current_year == 'all' else '' }}>جميع السنوات</option>
+                    {% for year in available_years %}
+                    <option value="{{ year }}" {{ 'selected' if current_year == year|string else '' }}>{{ year }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1" dir="rtl">الحالة</label>
+                <select name="status" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                    <option value="all" {{ 'selected' if current_status == 'all' else '' }}>جميع الحالات</option>
+                    <option value="active" {{ 'selected' if current_status == 'active' else '' }}>نشط</option>
+                    <option value="completed" {{ 'selected' if current_status == 'completed' else '' }}>مكتمل</option>
+                    <option value="archived" {{ 'selected' if current_status == 'archived' else '' }}>مؤرشف</option>
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1" dir="rtl">الفئة</label>
+                <select name="category" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                    <option value="all" {{ 'selected' if current_category == 'all' else '' }}>جميع الفئات</option>
+                    {% for category in available_categories %}
+                    <option value="{{ category }}" {{ 'selected' if current_category == category else '' }}>{{ category }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="flex items-end">
+                <button type="submit" class="w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200">
+                    🔍 تصفية
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Monthly Plans Grid -->
+    {% if monthly_plans %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for plan in monthly_plans %}
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200">
+            <!-- Plan Header -->
+            <div class="p-4 border-b border-gray-100">
+                <div class="flex justify-between items-start mb-2">
+                    <h3 class="text-lg font-semibold text-gray-900 truncate" dir="rtl">{{ plan.title }}</h3>
+                    <span class="text-xs px-2 py-1 rounded-full {{ 
+                        'bg-green-100 text-green-800' if plan.status == 'completed' else
+                        'bg-blue-100 text-blue-800' if plan.status == 'active' else
+                        'bg-gray-100 text-gray-800'
+                    }}">
+                        {{ 'مكتمل' if plan.status == 'completed' else 'نشط' if plan.status == 'active' else 'مؤرشف' }}
+                    </span>
+                </div>
+                
+                <div class="flex items-center justify-between text-sm text-gray-600">
+                    <span dir="rtl">📅 {{ plan.month_name_arabic }} {{ plan.year }}</span>
+                    {% if plan.is_current_month %}
+                    <span class="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-medium">الشهر الحالي</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Plan Content -->
+            <div class="p-4">
+                
+                <!-- Progress Bar -->
+                <div class="mb-3">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs text-gray-600" dir="rtl">التقدم</span>
+                        <span class="text-xs font-medium text-gray-900">{{ plan.progress_percentage }}%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="bg-gradient-to-r from-cyan-500 to-blue-500 h-2 rounded-full transition-all duration-300" 
+                             style="width: {{ plan.progress_percentage }}%"></div>
+                    </div>
+                </div>
+
+                <!-- Plan Meta -->
+                <div class="flex flex-wrap gap-2 mb-3">
+                    <span class="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded">{{ plan.category }}</span>
+                    <span class="text-xs px-2 py-1 {{ 
+                        'bg-red-100 text-red-700' if plan.priority == 'high' else
+                        'bg-yellow-100 text-yellow-700' if plan.priority == 'medium' else
+                        'bg-green-100 text-green-700'
+                    }} rounded">
+                        {{ 'عالي' if plan.priority == 'high' else 'متوسط' if plan.priority == 'medium' else 'منخفض' }}
+                    </span>
+                </div>
+
+                {% if plan.tags %}
+                <div class="mb-3">
+                    {% for tag in plan.tags.split(',') %}
+                    {% if tag.strip() %}
+                    <span class="inline-block text-xs px-2 py-1 bg-cyan-100 text-cyan-700 rounded mr-1 mb-1">#{{ tag.strip() }}</span>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Plan Actions -->
+            <div class="p-4 border-t border-gray-100 bg-gray-50">
+                <div class="flex justify-between items-center">
+                    <div class="text-xs text-gray-500" dir="rtl">
+                        {{ plan.created_at.strftime('%Y-%m-%d') }}
+                    </div>
+                    <div class="flex gap-2">
+                        <a href="{{ url_for('edit_monthly_plan', plan_id=plan.id) }}" 
+                           class="text-cyan-600 hover:text-cyan-800 text-sm font-medium">
+                            📝 تفاصيل
+                        </a>
+                        <a href="{{ url_for('update_monthly_plan', plan_id=plan.id) }}" 
+                           class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                            ⚙️ تعديل
+                        </a>
+                        <button onclick="deletePlan({{ plan.id }})" 
+                                class="text-red-600 hover:text-red-800 text-sm font-medium">
+                            🗑️ حذف
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-12">
+        <div class="text-6xl mb-4">📅</div>
+        <h3 class="text-xl font-semibold text-gray-900 mb-2" dir="rtl">لا توجد خطط شهرية</h3>
+        <p class="text-gray-600 mb-4" dir="rtl">ابدأ بإنشاء خطتك الشهرية الأولى</p>
+        <a href="{{ url_for('new_monthly_plan') }}" 
+           class="inline-block bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200">
+            ➕ إنشاء خطة شهرية
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function deletePlan(planId) {
+    if (confirm('هل أنت متأكد من حذف هذه الخطة الشهرية؟')) {
+        fetch(`/api/monthly_plans/${planId}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('حدث خطأ: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('حدث خطأ في الاتصال');
+        });
+    }
+}
+</script>
+{% endblock %}

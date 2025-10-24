@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}{% if project %}Edit Project{% else %}New Project{% endif %} - Backlog{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-3xl" dir="ltr">
+    <div class="bg-white rounded-lg shadow-lg p-8">
+        <h2 class="text-3xl font-bold text-cyan-950 mb-6">
+            {% if project %}✏️ Edit Project{% else %}➕ New Project{% endif %}
+        </h2>
+
+        <form method="POST" class="space-y-6">
+            <!-- Name -->
+            <div>
+                <label class="block text-gray-700 font-semibold mb-2">Project Name *</label>
+                <input type="text" name="name" required
+                       value="{{ project.name if project else '' }}"
+                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent"
+                       placeholder="Example: Chat Platform">
+            </div>
+
+            <!-- Name Arabic (optional) -->
+            <div>
+                <label class="block text-gray-700 font-semibold mb-2">Project Name (Arabic)</label>
+                <input type="text" name="name_arabic"
+                       value="{{ project.name_arabic if project else '' }}"
+                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent"
+                       placeholder="اسم المشروع (اختياري)">
+            </div>
+
+            <!-- Description -->
+            <div>
+                <label class="block text-gray-700 font-semibold mb-2">Description</label>
+                <textarea name="description" rows="4"
+                          class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent"
+                          placeholder="Brief project description...">{{ project.description if project else '' }}</textarea>
+            </div>
+
+            <!-- Status and Priority -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Status</label>
+                    <select name="status" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent">
+                        <option value="active" {% if project and project.status == 'active' %}selected{% endif %}>Active</option>
+                        <option value="completed" {% if project and project.status == 'completed' %}selected{% endif %}>Completed</option>
+                        <option value="archived" {% if project and project.status == 'archived' %}selected{% endif %}>Archived</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Priority</label>
+                    <select name="priority" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent">
+                        <option value="high" {% if project and project.priority == 'high' %}selected{% endif %}>High</option>
+                        <option value="medium" {% if project and project.priority == 'medium' %}selected{% endif %}>Medium</option>
+                        <option value="low" {% if project and project.priority == 'low' %}selected{% endif %}>Low</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Dates -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Start Date</label>
+                    <input type="date" name="start_date"
+                           value="{{ project.start_date.strftime('%Y-%m-%d') if project and project.start_date else '' }}"
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent">
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">End Date</label>
+                    <input type="date" name="end_date"
+                           value="{{ project.end_date.strftime('%Y-%m-%d') if project and project.end_date else '' }}"
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-950 focus:border-transparent">
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex space-x-4 pt-4">
+                <button type="submit" class="flex-1 bg-cyan-950 text-white py-3 px-6 rounded-lg hover:bg-cyan-900 transition font-semibold">
+                    💾 Save
+                </button>
+                <a href="{{ url_for('backlog_project', project_id=project.id) if project else url_for('backlog') }}" 
+                   class="flex-1 bg-gray-200 text-gray-700 py-3 px-6 rounded-lg hover:bg-gray-300 transition text-center font-semibold">
+                    ❌ Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

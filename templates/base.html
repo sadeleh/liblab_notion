@@ -200,9 +200,56 @@
         <div class="container mx-auto px-4">
             <div class="flex justify-between items-center py-4">
                 <div class="flex items-center space-x-4 space-x-reverse">
-                    <h1 class="text-2xl font-bold text-cyan-950">مركز الفريق</h1>
+                    <!-- Workspace Switcher -->
+                    {% if user_workspaces|length > 1 %}
+                    <div class="relative workspace-switcher">
+                        <button id="workspace-dropdown-btn" class="flex items-center space-x-2 space-x-reverse bg-cyan-950 text-white px-4 py-2 rounded-lg hover:bg-cyan-900 transition-colors">
+                            <span class="text-lg">🏢</span>
+                            <span class="font-bold">{{ session.get('current_workspace_name', 'Workspace') }}</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        <div id="workspace-dropdown" class="hidden absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+                            <div class="py-2">
+                                <div class="px-4 py-2 text-xs text-gray-500 font-semibold border-b">
+                                    تبديل Workspace
+                                </div>
+                                {% for workspace in user_workspaces %}
+                                <a href="{{ url_for('switch_workspace', workspace_id=workspace.id) }}" 
+                                   class="block px-4 py-3 hover:bg-cyan-50 transition-colors {{ 'bg-cyan-100' if session.get('current_workspace_id') == workspace.id else '' }}">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <div class="font-semibold text-gray-900">{{ workspace.name }}</div>
+                                            <div class="text-xs text-gray-500">{{ workspace.id }}</div>
+                                        </div>
+                                        {% if session.get('current_workspace_id') == workspace.id %}
+                                        <span class="text-green-600">✓</span>
+                                        {% endif %}
+                                    </div>
+                                </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <h1 class="text-2xl font-bold text-cyan-950">
+                        {{ session.get('current_workspace_name', 'Workspace') }}
+                    </h1>
+                    {% endif %}
+                    
+                    {% if session.get('username') %}
+                    <span class="text-sm text-gray-600">
+                        مرحباً، {{ session.get('username') }}
+                    </span>
+                    {% endif %}
                 </div>
                 <div class="hidden md:flex space-x-6 space-x-reverse">
+                    {% if session.get('is_superadmin') %}
+                    <a href="{{ url_for('admin_workspaces') }}" class="nav-link {{ 'active' if 'admin' in request.endpoint else '' }}">
+                        <span class="text-xl ml-2">👑</span>لوحة الإدارة
+                    </a>
+                    {% endif %}
                     <a href="{{ url_for('index') }}" class="nav-link {{ 'active' if request.endpoint == 'index' else '' }}">
                         <span class="text-xl ml-2">🏠</span>لوحة التحكم
                     </a>
@@ -221,8 +268,17 @@
                     <a href="{{ url_for('voice_notes') }}" class="nav-link {{ 'active' if 'voice_note' in request.endpoint else '' }}">
                         <span class="text-xl ml-2">💡</span>بنك الأفكار
                     </a>
-                    <a href="{{ url_for('liblab_plan') }}" class="nav-link {{ 'active' if 'liblab_plan' in request.endpoint else '' }}">
-                        <span class="text-xl ml-2">📋</span>خطة لبلاب
+                    <a href="{{ url_for('monthly_plans') }}" class="nav-link {{ 'active' if 'monthly_plan' in request.endpoint else '' }}">
+                        <span class="text-xl ml-2">📅</span>مركز التخطيط
+                    </a>
+                    <a href="{{ url_for('reminders') }}" class="nav-link {{ 'active' if 'reminder' in request.endpoint else '' }}">
+                        <span class="text-xl ml-2">🔔</span>لا تنسى
+                    </a>
+                    <a href="{{ url_for('backlog') }}" class="nav-link {{ 'active' if 'backlog' in request.endpoint else '' }}">
+                        <span class="text-xl ml-2">📊</span>Backlog
+                    </a>
+                    <a href="{{ url_for('logout') }}" class="nav-link text-red-600 hover:text-red-700">
+                        <span class="text-xl ml-2">🚪</span>تسجيل خروج
                     </a>
                 </div>
                 <div class="md:hidden">
@@ -235,6 +291,11 @@
             </div>
             <!-- Mobile menu -->
             <div id="mobile-menu" class="hidden md:hidden pb-4">
+                {% if session.get('is_superadmin') %}
+                <a href="{{ url_for('admin_workspaces') }}" class="block py-2 text-cyan-950 hover:bg-cyan-50 px-4 rounded">
+                    <span class="text-xl ml-2">👑</span>لوحة الإدارة
+                </a>
+                {% endif %}
                 <a href="{{ url_for('index') }}" class="block py-2 text-cyan-950 hover:bg-cyan-50 px-4 rounded">
                     <span class="text-xl ml-2">🏠</span>لوحة التحكم
                 </a>
@@ -250,11 +311,20 @@
                 <a href="{{ url_for('smart_notion') }}" class="block py-2 text-cyan-950 hover:bg-cyan-50 px-4 rounded">
                     <span class="text-xl ml-2">🧠</span>الملاحظات الذكية
                 </a>
-                <a href="{{ url_for('voice_notes') }}" class="block py-2 text-cyan-950 hover:bg-cyan-50 px-4 rounded">
-                                                <span class="text-xl ml-2">💡</span>بنك الأفكار
+                                <a href="{{ url_for('voice_notes') }}" class="block py-2 text-cyan-950 hover:bg-cyan-50 px-4 rounded">
+                    <span class="text-xl ml-2">💡</span>بنك الأفكار
                 </a>
-                <a href="{{ url_for('liblab_plan') }}" class="block py-2 text-cyan-950 hover:bg-cyan-50 px-4 rounded">
-                    <span class="text-xl ml-2">📋</span>خطة لبلاب
+                <a href="{{ url_for('monthly_plans') }}" class="block py-2 text-cyan-950 hover:bg-cyan-50 px-4 rounded">
+                    <span class="text-xl ml-2">📅</span>مركز التخطيط
+                </a>
+                <a href="{{ url_for('reminders') }}" class="block py-2 text-cyan-950 hover:bg-cyan-50 px-4 rounded">
+                    <span class="text-xl ml-2">🔔</span>لا تنسى
+                </a>
+                <a href="{{ url_for('backlog') }}" class="block py-2 text-cyan-950 hover:bg-cyan-50 px-4 rounded">
+                    <span class="text-xl ml-2">📊</span>Backlog
+                </a>
+                <a href="{{ url_for('logout') }}" class="block py-2 text-red-600 hover:bg-red-50 px-4 rounded">
+                    <span class="text-xl ml-2">🚪</span>تسجيل خروج
                 </a>
             </div>
         </div>
@@ -285,6 +355,24 @@
             menu.classList.toggle('hidden');
         });
 
+        // Workspace dropdown toggle
+        const workspaceBtn = document.getElementById('workspace-dropdown-btn');
+        const workspaceDropdown = document.getElementById('workspace-dropdown');
+        
+        if (workspaceBtn && workspaceDropdown) {
+            workspaceBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                workspaceDropdown.classList.toggle('hidden');
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!workspaceBtn.contains(e.target) && !workspaceDropdown.contains(e.target)) {
+                    workspaceDropdown.classList.add('hidden');
+                }
+            });
+        }
+
         // Add active class styling
         const style = document.createElement('style');
         style.textContent = `
@@ -296,6 +384,7 @@
                 align-items: center;
                 color: #083344;
                 text-decoration: none;
+                white-space: nowrap;
             }
             .nav-link:hover {
                 background-color: #f0f9ff;

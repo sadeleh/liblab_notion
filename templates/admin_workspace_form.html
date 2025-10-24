@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'إضافة Workspace' if not workspace else 'تعديل Workspace' }} - مركز تخطيط الفريق{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <h1 class="text-3xl font-bold text-cyan-950 mb-6">
+        {{ 'إضافة Workspace جديد' if not workspace else 'تعديل Workspace' }}
+    </h1>
+
+    <div class="bg-white rounded-lg shadow p-6">
+        <form method="POST">
+            <div class="space-y-4">
+                {% if not workspace %}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">المعرف (ID) *</label>
+                    <input type="text" 
+                           name="workspace_id" 
+                           required 
+                           pattern="ws-[a-z0-9-]+"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-950"
+                           placeholder="مثال: ws-dev-team">
+                    <p class="text-sm text-gray-500 mt-1">
+                        يجب أن يبدأ بـ "ws-" ويحتوي على أحرف إنجليزية صغيرة وأرقام وشرطات فقط
+                    </p>
+                </div>
+                {% endif %}
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">الاسم *</label>
+                    <input type="text" 
+                           name="name" 
+                           required 
+                           value="{{ workspace.name if workspace else '' }}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-950"
+                           placeholder="مثال: فريق التطوير">
+                </div>
+
+                {% if workspace %}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">المعرف (ID)</label>
+                    <input type="text" 
+                           value="{{ workspace.id }}"
+                           disabled
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500">
+                    <p class="text-sm text-gray-500 mt-1">
+                        لا يمكن تعديل معرف الـ workspace
+                    </p>
+                </div>
+                {% endif %}
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">الوصف</label>
+                    <textarea name="description" 
+                              rows="3"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-950"
+                              placeholder="وصف مختصر للـ workspace">{{ workspace.description if workspace else '' }}</textarea>
+                </div>
+
+                <div class="flex gap-3 pt-4">
+                    <button type="submit" 
+                            class="bg-cyan-950 hover:bg-cyan-900 text-white px-6 py-2 rounded-lg">
+                        {{ '✅ إضافة' if not workspace else '💾 حفظ التغييرات' }}
+                    </button>
+                    <a href="{{ url_for('admin_workspaces') }}" 
+                       class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg">
+                        إلغاء
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="mt-6">
+        <a href="{{ url_for('admin_workspaces') }}" class="text-cyan-950 hover:underline">
+            ← العودة إلى قائمة Workspaces
+        </a>
+    </div>
+</div>
+{% endblock %}
+

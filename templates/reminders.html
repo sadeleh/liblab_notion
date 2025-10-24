@@ -1,0 +1,525 @@
+{% extends "base.html" %}
+
+{% block title %}لا تنسى - التذكيرات{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <!-- Header Section -->
+    <div class="bg-gradient-to-r from-orange-50 to-red-50 rounded-lg p-6 mb-6 border border-orange-200">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-orange-950 mb-2" dir="rtl">🔔 لا تنسى</h1>
+                <p class="text-gray-600 text-sm sm:text-base" dir="rtl">تذكيرات مهمة لأشياء لا يجب أن تنساها</p>
+            </div>
+            <button onclick="showAddReminderModal()" 
+                    class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 whitespace-nowrap">
+                ➕ تذكير جديد
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600" dir="rtl">إجمالي التذكيرات</p>
+                    <p class="text-2xl font-bold text-orange-950">{{ stats.total }}</p>
+                </div>
+                <div class="text-orange-600 text-2xl">📋</div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600" dir="rtl">نشطة</p>
+                    <p class="text-2xl font-bold text-blue-600">{{ stats.active }}</p>
+                </div>
+                <div class="text-blue-600 text-2xl">🔔</div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600" dir="rtl">مستحقة اليوم</p>
+                    <p class="text-2xl font-bold {{ 'text-red-600' if stats.due_today > 0 else 'text-green-600' }}">{{ stats.due_today }}</p>
+                </div>
+                <div class="text-{{ 'red' if stats.due_today > 0 else 'green' }}-600 text-2xl">
+                    {{ '⚠️' if stats.due_today > 0 else '✅' }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+        <form method="GET" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1" dir="rtl">الحالة</label>
+                <select name="status" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    <option value="active" {{ 'selected' if current_status == 'active' else '' }}>نشطة</option>
+                    <option value="all" {{ 'selected' if current_status == 'all' else '' }}>جميع الحالات</option>
+                    <option value="completed" {{ 'selected' if current_status == 'completed' else '' }}>مكتملة</option>
+                    <option value="dismissed" {{ 'selected' if current_status == 'dismissed' else '' }}>مرفوضة</option>
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1" dir="rtl">الفئة</label>
+                <select name="category" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    <option value="all" {{ 'selected' if current_category == 'all' else '' }}>جميع الفئات</option>
+                    {% for category in available_categories %}
+                    <option value="{{ category }}" {{ 'selected' if current_category == category else '' }}>{{ category }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="flex items-end">
+                <button type="submit" class="w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200">
+                    🔍 تصفية
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Reminders List -->
+    {% if reminders %}
+    <div class="space-y-4">
+        {% for reminder in reminders %}
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200 p-4 {{ 
+            'border-l-4 border-l-red-500 bg-red-50' if reminder.is_overdue else
+            'border-l-4 border-l-orange-500 bg-orange-50' if reminder.is_due_today else
+            'border-l-4 border-l-gray-300'
+        }}">
+            <div class="flex items-start justify-between gap-4">
+                <div class="flex items-start gap-3 flex-1">
+                    <!-- Status Checkbox -->
+                    <button onclick="updateReminderStatus({{ reminder.id }}, '{{ 'active' if reminder.status == 'completed' else 'completed' }}')"
+                            class="flex-shrink-0 w-5 h-5 rounded-full border-2 mt-1 {{ 
+                                'bg-green-500 border-green-500' if reminder.status == 'completed' else
+                                'bg-gray-500 border-gray-500' if reminder.status == 'dismissed' else
+                                'border-gray-300 hover:border-orange-500'
+                            }} transition-colors duration-200 cursor-pointer">
+                        {% if reminder.status == 'completed' %}
+                        <svg class="w-3 h-3 text-white m-auto" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        {% elif reminder.status == 'dismissed' %}
+                        <svg class="w-3 h-3 text-white m-auto" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                        </svg>
+                        {% endif %}
+                    </button>
+
+                    <!-- Reminder Content -->
+                    <div class="flex-1">
+                        <h3 class="font-medium text-gray-900 {{ 'line-through text-gray-500' if reminder.status == 'completed' else '' }}" dir="rtl">
+                            {{ reminder.title }}
+                        </h3>
+                        
+                        {% if reminder.extra_info %}
+                        <div class="mt-2 text-sm text-gray-700 bg-gray-50 rounded-md p-2" dir="rtl">
+                            {% if reminder.extra_info.startswith('http') %}
+                                <a href="{{ reminder.extra_info }}" target="_blank" class="text-blue-600 hover:text-blue-800 underline">
+                                    🔗 {{ reminder.extra_info }}
+                                </a>
+                            {% else %}
+                                <span class="text-gray-600">📝 {{ reminder.extra_info }}</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        
+                        <div class="flex flex-wrap items-center gap-3 mt-2 text-sm">
+                            {% if reminder.reminder_date %}
+                            <span class="flex items-center gap-1 {{ 
+                                'text-red-600 font-medium' if reminder.is_overdue else
+                                'text-orange-600 font-medium' if reminder.is_due_today else
+                                'text-gray-600'
+                            }}" dir="rtl">
+                                📅 {{ reminder.reminder_date.strftime('%Y-%m-%d') }}
+                                {% if reminder.is_overdue %}
+                                (متأخر)
+                                {% elif reminder.is_due_today %}
+                                (اليوم)
+                                {% elif reminder.days_until_reminder is not none and reminder.days_until_reminder > 0 %}
+                                ({{ reminder.days_until_reminder }} يوم متبقي)
+                                {% endif %}
+                            </span>
+                            {% endif %}
+                            
+                            <span class="px-2 py-1 rounded text-xs {{ 
+                                'bg-red-100 text-red-700' if reminder.priority == 'high' else
+                                'bg-yellow-100 text-yellow-700' if reminder.priority == 'medium' else
+                                'bg-green-100 text-green-700'
+                            }}">
+                                {{ 'عالي' if reminder.priority == 'high' else 'متوسط' if reminder.priority == 'medium' else 'منخفض' }}
+                            </span>
+                            
+                            <span class="px-2 py-1 rounded text-xs {{ 
+                                'bg-green-100 text-green-700' if reminder.status == 'completed' else
+                                'bg-gray-100 text-gray-700' if reminder.status == 'dismissed' else
+                                'bg-blue-100 text-blue-700'
+                            }}">
+                                {{ 'مكتمل' if reminder.status == 'completed' else 'مرفوض' if reminder.status == 'dismissed' else 'نشط' }}
+                            </span>
+                            
+                            <span class="text-gray-500">{{ reminder.category }}</span>
+                            
+                            {% if reminder.completed_at %}
+                            <span class="text-green-600 text-xs" dir="rtl">✅ مكتمل في {{ reminder.completed_at.strftime('%Y-%m-%d') }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Actions -->
+                <div class="flex gap-2">
+                    <button onclick="showEditReminderModal({{ reminder.id }}, '{{ reminder.title }}', '{{ reminder.reminder_date.strftime('%Y-%m-%d') if reminder.reminder_date else '' }}', '{{ reminder.priority }}', '{{ reminder.category }}', '{{ reminder.extra_info or '' }}')" 
+                            class="text-blue-600 hover:text-blue-800 text-sm"
+                            title="تعديل التذكير">
+                        ✏️
+                    </button>
+                    {% if reminder.status == 'active' %}
+                    <button onclick="updateReminderStatus({{ reminder.id }}, 'dismissed')" 
+                            class="text-gray-600 hover:text-gray-800 text-sm"
+                            title="رفض التذكير">
+                        ❌
+                    </button>
+                    {% endif %}
+                    <button onclick="deleteReminder({{ reminder.id }})" 
+                            class="text-red-600 hover:text-red-800 text-sm"
+                            title="حذف التذكير">
+                        🗑️
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-12">
+        <div class="text-6xl mb-4">🔔</div>
+        <h3 class="text-xl font-semibold text-gray-900 mb-2" dir="rtl">لا توجد تذكيرات</h3>
+        <p class="text-gray-600 mb-4" dir="rtl">ابدأ بإضافة تذكيرات للأشياء المهمة التي لا تريد نسيانها</p>
+        <button onclick="showAddReminderModal()" 
+                class="inline-block bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200">
+            ➕ إضافة تذكير
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Add Reminder Modal -->
+<div id="addReminderModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg max-w-md w-full p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4" dir="rtl">➕ تذكير جديد</h3>
+        
+        <form id="addReminderForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1" dir="rtl">لا تنسى أن... *</label>
+                <input type="text" 
+                       id="reminderTitle" 
+                       required 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                       placeholder="مثال: تلغي اشتراك نتفليكس"
+                       dir="rtl">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1" dir="rtl">معلومات إضافية (رابط أو ملاحظة)</label>
+                <textarea id="reminderMetadata" 
+                          rows="2"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          placeholder="مثال: https://netflix.com/account أو ملاحظة مهمة"
+                          dir="rtl"></textarea>
+                <p class="text-xs text-gray-500 mt-1" dir="rtl">يمكنك إضافة رابط أو ملاحظة تساعدك في تذكر التفاصيل</p>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1" dir="rtl">تاريخ التذكير</label>
+                    <input type="date" 
+                           id="reminderDate" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1" dir="rtl">الأولوية</label>
+                    <select id="reminderPriority" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <option value="low">منخفض</option>
+                        <option value="medium" selected>متوسط</option>
+                        <option value="high">عالي</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1" dir="rtl">الفئة</label>
+                    <select id="reminderCategory" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <option value="general">عام</option>
+                        <option value="subscriptions">اشتراكات</option>
+                        <option value="bills">فواتير</option>
+                        <option value="appointments">مواعيد</option>
+                        <option value="health">صحة</option>
+                        <option value="work">عمل</option>
+                        <option value="personal">شخصي</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1" dir="rtl">منشئ التذكير</label>
+                    <input type="text" 
+                           id="reminderCreatedBy" 
+                           value="مجهول"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                           dir="rtl">
+                </div>
+            </div>
+            
+            <div class="flex gap-3 pt-4">
+                <button type="submit" 
+                        class="flex-1 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
+                    ➕ إضافة التذكير
+                </button>
+                <button type="button" 
+                        onclick="hideAddReminderModal()" 
+                        class="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
+                    إلغاء
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Reminder Modal -->
+<div id="editReminderModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg max-w-md w-full p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4" dir="rtl">✏️ تعديل التذكير</h3>
+        
+        <form id="editReminderForm" class="space-y-4">
+            <input type="hidden" id="editReminderId">
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1" dir="rtl">لا تنسى أن... *</label>
+                <input type="text" 
+                       id="editReminderTitle" 
+                       required 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                       placeholder="مثال: تلغي اشتراك نتفليكس"
+                       dir="rtl">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1" dir="rtl">معلومات إضافية (رابط أو ملاحظة)</label>
+                <textarea id="editReminderMetadata" 
+                          rows="2"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          placeholder="مثال: https://netflix.com/account أو ملاحظة مهمة"
+                          dir="rtl"></textarea>
+                <p class="text-xs text-gray-500 mt-1" dir="rtl">يمكنك إضافة رابط أو ملاحظة تساعدك في تذكر التفاصيل</p>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1" dir="rtl">تاريخ التذكير</label>
+                    <input type="date" 
+                           id="editReminderDate" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1" dir="rtl">الأولوية</label>
+                    <select id="editReminderPriority" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <option value="low">منخفض</option>
+                        <option value="medium">متوسط</option>
+                        <option value="high">عالي</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1" dir="rtl">الفئة</label>
+                <select id="editReminderCategory" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    <option value="general">عام</option>
+                    <option value="subscriptions">اشتراكات</option>
+                    <option value="bills">فواتير</option>
+                    <option value="appointments">مواعيد</option>
+                    <option value="health">صحة</option>
+                    <option value="work">عمل</option>
+                    <option value="personal">شخصي</option>
+                </select>
+            </div>
+            
+            <div class="flex gap-3 pt-4">
+                <button type="submit" 
+                        class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
+                    ✏️ تحديث التذكير
+                </button>
+                <button type="button" 
+                        onclick="hideEditReminderModal()" 
+                        class="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
+                    إلغاء
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function showAddReminderModal() {
+    document.getElementById('addReminderModal').classList.remove('hidden');
+    // Set default date to tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    document.getElementById('reminderDate').value = tomorrow.toISOString().split('T')[0];
+}
+
+function hideAddReminderModal() {
+    document.getElementById('addReminderModal').classList.add('hidden');
+    document.getElementById('addReminderForm').reset();
+}
+
+document.getElementById('addReminderForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = {
+        title: document.getElementById('reminderTitle').value,
+        reminder_date: document.getElementById('reminderDate').value,
+        priority: document.getElementById('reminderPriority').value,
+        category: document.getElementById('reminderCategory').value,
+        extra_info: document.getElementById('reminderMetadata').value,
+        created_by: document.getElementById('reminderCreatedBy').value
+    };
+    
+    fetch('/api/reminders', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('حدث خطأ: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('حدث خطأ في الاتصال');
+    });
+});
+
+function showEditReminderModal(id, title, date, priority, category, extra_info) {
+    document.getElementById('editReminderModal').classList.remove('hidden');
+    document.getElementById('editReminderId').value = id;
+    document.getElementById('editReminderTitle').value = title;
+    document.getElementById('editReminderDate').value = date;
+    document.getElementById('editReminderPriority').value = priority;
+    document.getElementById('editReminderCategory').value = category;
+    document.getElementById('editReminderMetadata').value = extra_info;
+}
+
+function hideEditReminderModal() {
+    document.getElementById('editReminderModal').classList.add('hidden');
+    document.getElementById('editReminderForm').reset();
+}
+
+document.getElementById('editReminderForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const reminderId = document.getElementById('editReminderId').value;
+    const formData = {
+        title: document.getElementById('editReminderTitle').value,
+        reminder_date: document.getElementById('editReminderDate').value,
+        priority: document.getElementById('editReminderPriority').value,
+        category: document.getElementById('editReminderCategory').value,
+        extra_info: document.getElementById('editReminderMetadata').value
+    };
+    
+    fetch(`/api/reminders/${reminderId}/edit`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('حدث خطأ: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('حدث خطأ في الاتصال');
+    });
+});
+
+function updateReminderStatus(reminderId, newStatus) {
+    fetch(`/api/reminders/${reminderId}/update_status?status=${newStatus}`, {
+        method: 'GET'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('حدث خطأ: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('حدث خطأ في الاتصال');
+    });
+}
+
+function deleteReminder(reminderId) {
+    if (confirm('هل أنت متأكد من حذف هذا التذكير؟')) {
+        fetch(`/api/reminders/${reminderId}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('حدث خطأ: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('حدث خطأ في الاتصال');
+        });
+    }
+}
+
+// Close modals when clicking outside
+document.getElementById('addReminderModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        hideAddReminderModal();
+    }
+});
+
+document.getElementById('editReminderModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        hideEditReminderModal();
+    }
+});
+</script>
+{% endblock %}
+

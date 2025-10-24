@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'إضافة مستخدم' if not user else 'تعديل مستخدم' }} - مركز تخطيط الفريق{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <h1 class="text-3xl font-bold text-cyan-950 mb-6">
+        {{ 'إضافة مستخدم جديد' if not user else 'تعديل مستخدم' }}
+        {% if user and user.id == current_user.id %}
+        <span class="text-blue-600 text-2xl ml-2">👤 أنت</span>
+        {% elif user and user.is_superadmin %}
+        <span class="text-purple-600 text-2xl ml-2">👑 Super Admin</span>
+        {% endif %}
+    </h1>
+
+    {% if user and user.id == current_user.id %}
+    <div class="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 mb-6">
+        <p class="text-blue-900 font-semibold">
+            ⚠️ أنت تقوم بتعديل حسابك الخاص - يمكنك فقط تغيير كلمة المرور
+        </p>
+        <p class="text-blue-700 text-sm mt-1">
+            لا يمكنك تغيير اسم المستخدم أو صلاحيات Super Admin أو الـ workspaces المعينة لنفسك
+        </p>
+    </div>
+    {% endif %}
+
+    <div class="bg-white rounded-lg shadow p-6">
+        <form method="POST">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">اسم المستخدم *</label>
+                    <input type="text" 
+                           name="username" 
+                           required 
+                           value="{{ user.username if user else '' }}"
+                           {{ 'disabled' if user and user.id == current_user.id else '' }}
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-950 {{ 'bg-gray-100 text-gray-500 cursor-not-allowed' if user and user.id == current_user.id else '' }}"
+                           placeholder="username">
+                    {% if user and user.id == current_user.id %}
+                    <p class="text-sm text-blue-600 mt-1">
+                        🔒 لا يمكنك تغيير اسم المستخدم الخاص بك
+                    </p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        كلمة المرور {{ '*' if not user else '(اتركها فارغة لعدم التغيير)' }}
+                    </label>
+                    <div class="relative">
+                        <input type="text" 
+                               name="password" 
+                               id="password"
+                               {{ 'required' if not user else '' }}
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-950"
+                               placeholder="أدخل كلمة المرور (نص واضح)">
+                        <p class="text-sm text-gray-500 mt-1">
+                            {{ '⚠️ كلمة المرور ستكون مرئية - شاركها مع المستخدم بعد الإنشاء' if not user else 'اترك الحقل فارغاً إذا كنت لا تريد تغيير كلمة المرور' }}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center">
+                    <input type="checkbox" 
+                           name="is_superadmin" 
+                           id="is_superadmin"
+                           {{ 'checked' if user and user.is_superadmin else '' }}
+                           {{ 'disabled' if user and user.id == current_user.id else '' }}
+                           class="h-4 w-4 text-cyan-950 focus:ring-cyan-950 border-gray-300 rounded {{ 'cursor-not-allowed opacity-50' if user and user.id == current_user.id else '' }}">
+                    <label for="is_superadmin" class="mr-2 block text-sm text-gray-900">
+                        👑 Super Admin (صلاحيات كاملة)
+                    </label>
+                </div>
+                {% if user and user.id == current_user.id %}
+                <p class="text-sm text-blue-600 mt-1">
+                    🔒 لا يمكنك تغيير صلاحياتك الخاصة
+                </p>
+                {% endif %}
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        الـ Workspaces المتاحة {{ '*' if not user else '' }}
+                    </label>
+                    {% if user and user.id == current_user.id %}
+                    <div class="bg-blue-50 border border-blue-300 rounded-md p-4">
+                        <p class="text-blue-700 font-medium">
+                            🔒 لا يمكنك تغيير الـ workspaces الخاصة بك
+                        </p>
+                        {% if user.is_superadmin %}
+                        <p class="text-blue-600 text-sm mt-1">
+                            👑 لديك وصول لجميع الـ Workspaces تلقائياً
+                        </p>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="space-y-2 max-h-64 overflow-y-auto border border-gray-300 rounded-md p-3">
+                        {% if workspaces %}
+                            {% for workspace in workspaces %}
+                            <div class="flex items-center">
+                                <input type="checkbox" 
+                                       name="workspaces" 
+                                       value="{{ workspace.id }}"
+                                       id="workspace_{{ workspace.id }}"
+                                       {{ 'checked' if user and workspace.id in user_workspace_ids else '' }}
+                                       class="h-4 w-4 text-cyan-950 focus:ring-cyan-950 border-gray-300 rounded">
+                                <label for="workspace_{{ workspace.id }}" class="mr-2 block text-sm text-gray-900">
+                                    {{ workspace.name }} <span class="text-gray-500">({{ workspace.id }})</span>
+                                </label>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-sm text-gray-500">لا توجد workspaces متاحة</p>
+                        {% endif %}
+                    </div>
+                    <p class="text-sm text-gray-500 mt-1">
+                        حدد الـ workspaces التي يمكن للمستخدم الوصول إليها
+                    </p>
+                    {% endif %}
+                </div>
+
+                <div class="flex gap-3 pt-4">
+                    <button type="submit" 
+                            class="bg-cyan-950 hover:bg-cyan-900 text-white px-6 py-2 rounded-lg">
+                        {{ '✅ إضافة' if not user else '💾 حفظ التغييرات' }}
+                    </button>
+                    <a href="{{ url_for('admin_users') }}" 
+                       class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg">
+                        إلغاء
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="mt-6">
+        <a href="{{ url_for('admin_users') }}" class="text-cyan-950 hover:underline">
+            ← العودة إلى قائمة المستخدمين
+        </a>
+    </div>
+</div>
+{% endblock %}
+
